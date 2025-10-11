@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Photo Widget</string>
+    <string name="select_folder">Επιλογή φακέλου</string>
+    <string name="config_description">Διαλέξτε φάκελο με φωτογραφίες για να τροφοδοτήσετε το widget.</string>
+    <string name="empty_widget">Επιλέξτε φάκελο για να ξεκινήσει η προβολή.</string>
+    <string name="refresh">Ανανέωση φωτογραφιών</string>
+    <string name="photo_item">Φωτογραφία widget</string>
+</resources>

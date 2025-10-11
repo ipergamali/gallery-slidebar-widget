@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widgetRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <AdapterViewFlipper
+        android:id="@+id/imageFlipper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:autoStart="true"
+        android:flipInterval="4000"
+        android:inAnimation="@android:anim/fade_in"
+        android:outAnimation="@android:anim/fade_out" />
+
+    <TextView
+        android:id="@+id/emptyView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:text="@string/empty_widget"
+        android:textColor="@android:color/white"
+        android:visibility="gone" />
+
+    <ImageButton
+        android:id="@+id/refreshButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="8dp"
+        android:backgroundTint="@android:color/white"
+        android:background="@drawable/widget_refresh_background"
+        android:contentDescription="@string/refresh"
+        android:padding="8dp"
+        android:src="@android:drawable/ic_popup_sync" />
+</FrameLayout>
