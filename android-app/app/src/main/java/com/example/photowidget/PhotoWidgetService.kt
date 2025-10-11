@@ -11,6 +11,7 @@ import android.widget.RemoteViewsService
 import androidx.documentfile.provider.DocumentFile
 import com.example.photowidget.data.WidgetPreferences
 import kotlinx.coroutines.runBlocking
+import java.util.Locale
 
 class PhotoWidgetService : RemoteViewsService() {
     companion object {
@@ -73,7 +74,7 @@ private class PhotoWidgetFactory(
         val documentFile = DocumentFile.fromTreeUri(context, folderUri) ?: return
         val files = try {
             documentFile.listFiles()
-                .filter { it.isFile && it.type?.startsWith("image/") == true }
+                .filter { it.isReadableImage() }
                 .sortedBy { it.name ?: "" }
                 .take(MAX_ITEMS)
         } catch (_: SecurityException) {
@@ -82,6 +83,21 @@ private class PhotoWidgetFactory(
         files.forEach { file ->
             imageUris.add(file.uri)
         }
+    }
+
+    private fun DocumentFile.isReadableImage(): Boolean {
+        if (!isFile) return false
+        val mimeType = type
+        if (mimeType != null && mimeType.startsWith("image/")) {
+            return true
+        }
+        val fileName = name?.lowercase(Locale.getDefault()) ?: return false
+        return fileName.endsWith(".jpg") ||
+            fileName.endsWith(".jpeg") ||
+            fileName.endsWith(".png") ||
+            fileName.endsWith(".gif") ||
+            fileName.endsWith(".webp") ||
+            fileName.endsWith(".bmp")
     }
 
     private fun decodeForWidget(uri: Uri): Bitmap? {
