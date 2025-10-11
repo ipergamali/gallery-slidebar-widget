@@ -1,0 +1,15 @@
+{
+  "KPackageStructure": "Plasma/Applet",
+  "KPlugin": {
+    "Id": "mywidget",
+    "Name": "My Widget",
+    "Description": "Simple Plasma 6 test widget",
+    "Icon": "preferences-system",
+    "Authors": [
+      { "Name": "Joanne Pergamali", "Email": "ioannapergamali@gmail.com" }
+    ],
+    "Version": "1.0",
+    "License": "GPL-3.0"
+  },
+  "X-Plasma-MainScript": "ui/main.qml"
+}
