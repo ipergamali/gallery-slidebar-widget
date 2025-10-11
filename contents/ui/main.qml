@@ -23,6 +23,25 @@ PlasmoidItem {
             implicitWidth: 220
             implicitHeight: 160
 
+            ToolButton {
+                id: folderButton
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.margins: 8
+                text: qsTr("Φάκελος")
+                z: 2
+                onClicked: folderDialog.open()
+            }
+
+            FolderDialog {
+                id: folderDialog
+                title: qsTr("Επιλογή φακέλου εικόνων")
+                folder: resolvedFolder
+                onAccepted: {
+                    plasmoid.configuration.imagesFolder = folder
+                }
+            }
+
             FolderListModel {
                 id: fileModel
                 folder: resolvedFolder
