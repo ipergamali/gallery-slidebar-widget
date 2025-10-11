@@ -1,17 +1,29 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
+import QtQuick
+import QtQuick.Controls
+import org.kde.plasma.plasmoid
 
-Rectangle {
-    width: 200
-    height: 100
-    color: "#45533C"
-    radius: 10
+PlasmoidItem {
+    id: root
+    preferredRepresentation: compactRepresentation
 
-    Text {
-        anchors.centerIn: parent
-        text: "Γεια σου Joanne!"
-        color: "white"
-        font.pixelSize: 20
+    Component {
+        id: greetingCard
+
+        Rectangle {
+            implicitWidth: 200
+            implicitHeight: 100
+            radius: 10
+            color: "#45533C"
+
+            Text {
+                anchors.centerIn: parent
+                text: "Γεια σου Joanne!"
+                color: "white"
+                font.pixelSize: 20
+            }
+        }
     }
-}
 
+    compactRepresentation: greetingCard
+    fullRepresentation: greetingCard
+}
