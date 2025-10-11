@@ -24,13 +24,25 @@
         android:visibility="gone" />
 
     <ImageButton
+        android:id="@+id/selectFolderButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="8dp"
+        android:background="@drawable/widget_refresh_background"
+        android:backgroundTint="@android:color/white"
+        android:contentDescription="@string/select_folder"
+        android:padding="8dp"
+        android:src="@android:drawable/ic_menu_gallery" />
+
+    <ImageButton
         android:id="@+id/refreshButton"
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:layout_gravity="bottom|end"
         android:layout_margin="8dp"
-        android:backgroundTint="@android:color/white"
         android:background="@drawable/widget_refresh_background"
+        android:backgroundTint="@android:color/white"
         android:contentDescription="@string/refresh"
         android:padding="8dp"
         android:src="@android:drawable/ic_popup_sync" />

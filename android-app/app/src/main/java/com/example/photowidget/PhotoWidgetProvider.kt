@@ -84,6 +84,7 @@ class PhotoWidgetProvider : AppWidgetProvider() {
                     flags
                 )
                 setOnClickPendingIntent(R.id.widgetRoot, pendingIntent)
+                setOnClickPendingIntent(R.id.selectFolderButton, pendingIntent)
 
                 val refreshIntent = Intent(context, PhotoWidgetProvider::class.java).apply {
                     action = ACTION_REFRESH
