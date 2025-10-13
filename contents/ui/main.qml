@@ -572,6 +572,11 @@ PlasmoidItem {
                 }
             }
 
+            onWidthChanged: {
+                if (currentIndex >= 0) {
+                    slideView.positionViewAtIndex(currentIndex, ListView.Center)
+                }
+
             Component.onCompleted: {
                 if (currentIndex >= 0) {
                     slideView.positionViewAtIndex(currentIndex, ListView.Center)
@@ -748,6 +753,26 @@ PlasmoidItem {
                         easing.type: Easing.InOutQuad
                     }
                 }
+            }
+
+                NumberAnimation {
+                    id: rotateAnimator
+                    target: rotateImage
+                    property: "rotation"
+                    duration: 450
+                    easing.type: Easing.InOutQuad
+                    from: -10
+                    to: 0
+                    onStarted: rotateImage.opacity = 0.0
+                    onFinished: rotateImage.opacity = 1.0
+                }
+
+                function restartAnimation() {
+                    rotateAnimator.stop()
+                    rotateImage.rotation = -10
+                    rotateAnimator.start()
+                    rotateImage.opacity = 1.0
+                }
 
                 NumberAnimation {
                     id: rotateAnimator
@@ -775,6 +800,7 @@ PlasmoidItem {
                         opacity = 0.0
                     }
                 }
+            }
 
                 onSourceChanged: {
                     if (hasImages) {
