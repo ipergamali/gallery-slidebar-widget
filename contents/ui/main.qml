@@ -1,7 +1,6 @@
 import QtQuick 6.5
 import QtQuick.Controls 6.5 as Controls
 import QtQuick.Layouts 6.5
-import QtQuick.Handlers 6.5
 import Qt.labs.folderlistmodel
 import Qt.labs.platform
 import org.kde.kirigami as Kirigami
