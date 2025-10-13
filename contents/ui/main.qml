@@ -30,6 +30,13 @@ PlasmoidItem {
     }
     readonly property int maxImages: 20
     readonly property int availableCount: Math.min(fileModel.count, maxImages)
+    property string transitionStyle: {
+        const style = plasmoid.configuration.transitionStyle
+        if (style === "slide" || style === "fade") {
+            return style
+        }
+        return "fade"
+    }
     property int currentIndex: 0
 
     preferredRepresentation: fullRepresentation
@@ -121,18 +128,63 @@ PlasmoidItem {
                     color: Qt.rgba(0.12, 0.13, 0.16, 0.96)
                     border.color: Qt.rgba(1, 1, 1, 0.06)
 
-                    Controls.ToolButton {
-                        id: folderButton
-                        anchors.centerIn: parent
-                        icon.name: "folder-open"
-                        display: Controls.AbstractButton.IconOnly
-                        icon.width: Kirigami.Units.iconSizes.smallMedium
-                        icon.height: Kirigami.Units.iconSizes.smallMedium
-                        onClicked: folderDialog.open()
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: Kirigami.Units.smallSpacing
+                        spacing: Kirigami.Units.smallSpacing
 
-                        Controls.ToolTip.visible: hovered
-                        Controls.ToolTip.text: qsTr("Change image folder")
-                        Controls.ToolTip.delay: 0
+                        Controls.ToolButton {
+                            id: folderButton
+                            Layout.alignment: Qt.AlignHCenter
+                            icon.name: "folder-open"
+                            display: Controls.AbstractButton.IconOnly
+                            icon.width: Kirigami.Units.iconSizes.smallMedium
+                            icon.height: Kirigami.Units.iconSizes.smallMedium
+                            onClicked: folderDialog.open()
+
+                            Controls.ToolTip.visible: hovered
+                            Controls.ToolTip.text: qsTr("Change image folder")
+                            Controls.ToolTip.delay: 0
+                        }
+
+                        Controls.ToolButton {
+                            id: animationButton
+                            Layout.alignment: Qt.AlignHCenter
+                            icon.name: "preferences-desktop-animations"
+                            display: Controls.AbstractButton.IconOnly
+                            icon.width: Kirigami.Units.iconSizes.smallMedium
+                            icon.height: Kirigami.Units.iconSizes.smallMedium
+                            onClicked: animationMenu.popup(animationButton)
+
+                            Controls.ToolTip.visible: hovered
+                            Controls.ToolTip.text: qsTr("Change transition animation")
+                            Controls.ToolTip.delay: 0
+                        }
+
+                        Item {
+                            Layout.fillHeight: true
+                        }
+                    }
+
+                    Controls.Menu {
+                        id: animationMenu
+                        Controls.ExclusiveGroup { id: animationGroup }
+
+                        Controls.MenuItem {
+                            text: qsTr("Fade")
+                            checkable: true
+                            checked: root.transitionStyle === "fade"
+                            exclusiveGroup: animationGroup
+                            onTriggered: plasmoid.configuration.transitionStyle = "fade"
+                        }
+
+                        Controls.MenuItem {
+                            text: qsTr("Slide")
+                            checkable: true
+                            checked: root.transitionStyle === "slide"
+                            exclusiveGroup: animationGroup
+                            onTriggered: plasmoid.configuration.transitionStyle = "slide"
+                        }
                     }
                 }
 
@@ -159,33 +211,10 @@ PlasmoidItem {
                         clip: true
                         focus: true
 
-                        Image {
-                            id: imageView
+                        Loader {
+                            id: transitionLoader
                             anchors.fill: parent
-                            anchors.margins: Kirigami.Units.smallSpacing
-                            asynchronous: true
-                            cache: true
-                            fillMode: Image.PreserveAspectFit
-                            smooth: true
-                            source: availableCount > 0 ? fileModel.get(currentIndex, "fileUrl") : ""
-                            opacity: 0.0
-
-                            Behavior on opacity {
-                                NumberAnimation {
-                                    duration: 400
-                                    easing.type: Easing.InOutQuad
-                                }
-                            }
-
-                            onStatusChanged: {
-                                if (status === Image.Ready) {
-                                    opacity = 1.0
-                                } else if (status === Image.Loading) {
-                                    opacity = 0.0
-                                }
-                            }
-
-                            onSourceChanged: opacity = 0.0
+                            sourceComponent: root.transitionStyle === "slide" ? slideImageComponent : fadeImageComponent
                         }
 
                         Controls.ToolButton {
@@ -238,4 +267,203 @@ PlasmoidItem {
 
     fullRepresentation: galleryView
     compactRepresentation: galleryView
+
+    Component {
+        id: fadeImageComponent
+
+        Image {
+            anchors.fill: parent
+            anchors.margins: Kirigami.Units.smallSpacing
+            asynchronous: true
+            cache: true
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            source: availableCount > 0 ? fileModel.get(root.currentIndex, "fileUrl") : ""
+            opacity: 0.0
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 400
+                    easing.type: Easing.InOutQuad
+                }
+            }
+
+            onStatusChanged: {
+                if (status === Image.Ready) {
+                    opacity = 1.0
+                } else if (status === Image.Loading) {
+                    opacity = 0.0
+                }
+            }
+
+            onSourceChanged: {
+                if (availableCount > 0) {
+                    opacity = 0.0
+                }
+            }
+        }
+    }
+
+    Component {
+        id: slideImageComponent
+
+        Item {
+            id: slideArea
+            anchors.fill: parent
+            anchors.margins: Kirigami.Units.smallSpacing
+            clip: true
+
+            property int displayedIndex: -1
+            property bool animating: false
+
+            Image {
+                id: currentSlideImage
+                anchors.fill: parent
+                asynchronous: true
+                cache: true
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+            }
+        }
+    }
+
+            Image {
+                id: nextSlideImage
+                anchors.fill: parent
+                visible: false
+                asynchronous: true
+                cache: true
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+            }
+
+            ParallelAnimation {
+                id: slideAnimation
+
+                NumberAnimation {
+                    id: currentOutAnimation
+                    target: currentSlideImage
+                    property: "x"
+                    duration: 400
+                    easing.type: Easing.InOutQuad
+                }
+
+                NumberAnimation {
+                    id: nextInAnimation
+                    target: nextSlideImage
+                    property: "x"
+                    duration: 400
+                    easing.type: Easing.InOutQuad
+                }
+
+                onStopped: {
+                    if (!slideArea.animating) {
+                        return
+                    }
+                    currentSlideImage.source = nextSlideImage.source
+                    currentSlideImage.x = 0
+                    nextSlideImage.visible = false
+                    nextSlideImage.source = ""
+                    nextSlideImage.x = 0
+                    slideArea.displayedIndex = root.currentIndex
+                    slideArea.animating = false
+                }
+            }
+
+            function computeDirection(oldIndex, newIndex) {
+                if (availableCount <= 1) {
+                    return 1
+                }
+                if (oldIndex === newIndex) {
+                    return 1
+                }
+                if (oldIndex === availableCount - 1 && newIndex === 0) {
+                    return 1
+                }
+                if (oldIndex === 0 && newIndex === availableCount - 1) {
+                    return -1
+                }
+                return newIndex > oldIndex ? 1 : -1
+            }
+
+            function resetToCurrent() {
+                slideAnimation.stop()
+                slideArea.animating = false
+                nextSlideImage.visible = false
+                nextSlideImage.source = ""
+                nextSlideImage.x = 0
+                currentSlideImage.x = 0
+
+                if (availableCount > 0) {
+                    slideArea.displayedIndex = root.currentIndex
+                    currentSlideImage.source = fileModel.get(root.currentIndex, "fileUrl")
+                } else {
+                    slideArea.displayedIndex = -1
+                    currentSlideImage.source = ""
+                }
+            }
+
+            function startSlide() {
+                if (availableCount <= 0) {
+                    resetToCurrent()
+                    return
+                }
+
+                const newSource = fileModel.get(root.currentIndex, "fileUrl")
+
+                if (slideArea.displayedIndex === -1 || !currentSlideImage.source) {
+                    resetToCurrent()
+                    return
+                }
+
+                if (newSource === currentSlideImage.source) {
+                    return
+                }
+
+                slideAnimation.stop()
+                slideArea.animating = true
+                nextSlideImage.source = newSource
+                nextSlideImage.visible = true
+
+                const direction = computeDirection(slideArea.displayedIndex, root.currentIndex)
+
+                currentSlideImage.x = 0
+                nextSlideImage.x = direction * slideArea.width
+
+                currentOutAnimation.to = -direction * slideArea.width
+                nextInAnimation.to = 0
+
+                slideAnimation.start()
+            }
+
+            Connections {
+                target: root
+                function onCurrentIndexChanged() {
+                    if (availableCount === 0) {
+                        resetToCurrent()
+                        return
+                    }
+                    if (slideArea.animating) {
+                        slideAnimation.stop()
+                    }
+                    startSlide()
+                }
+            }
+
+            Connections {
+                target: fileModel
+                function onCountChanged() {
+                    resetToCurrent()
+                }
+            }
+
+            Component.onCompleted: resetToCurrent()
+
+            onVisibleChanged: {
+                if (visible) {
+                    resetToCurrent()
+                }
+            }
+        }
+    }
 }
