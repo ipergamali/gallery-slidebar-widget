@@ -9,10 +9,25 @@ import org.kde.plasma.plasmoid
 PlasmoidItem {
     id: root
 
-    readonly property url defaultFolder: StandardPaths.writableLocation(StandardPaths.PicturesLocation)
-    readonly property url currentFolder: plasmoid.configuration.imagesFolder && plasmoid.configuration.imagesFolder.length > 0
-        ? plasmoid.configuration.imagesFolder
-        : defaultFolder
+    readonly property url defaultFolder: {
+        const picturesPath = StandardPaths.writableLocation(StandardPaths.PicturesLocation)
+        if (!picturesPath || picturesPath.length === 0) {
+            return ""
+        }
+        if (picturesPath.startsWith("file:")) {
+            return picturesPath
+        }
+        return Qt.platform.os === "windows"
+            ? "file:///" + picturesPath.replace(/\\/g, "/")
+            : "file://" + picturesPath
+    }
+    readonly property url currentFolder: {
+        const configuredFolder = plasmoid.configuration.imagesFolder
+        if (configuredFolder && configuredFolder.toString().length > 0) {
+            return configuredFolder
+        }
+        return defaultFolder
+    }
     readonly property int maxImages: 20
     readonly property int availableCount: Math.min(fileModel.count, maxImages)
     property int currentIndex: 0
