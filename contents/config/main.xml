@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0" xmlns:kcfg="http://www.kde.org/standards/kcfg/1.0">
+    <kcfgfile name="plasmarc" />
+    <group name="General">
+        <entry name="ImagesFolder" type="Url">
+            <label>Selected images folder</label>
+            <default></default>
+        </entry>
+        <entry name="TransitionStyle" type="String">
+            <label>Image transition animation style</label>
+            <default>fade</default>
+        </entry>
+    </group>
+</kcfg>
