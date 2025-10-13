@@ -244,7 +244,7 @@ PlasmoidItem {
                             display: Controls.AbstractButton.IconOnly
                             icon.width: Kirigami.Units.iconSizes.smallMedium
                             icon.height: Kirigami.Units.iconSizes.smallMedium
-                            onClicked: detailsMenu.open()
+                            onClicked: detailsMenu.popup(detailsButton)
 
                             Controls.ToolTip.visible: hovered
                             Controls.ToolTip.text: qsTr("Folder details")
@@ -258,7 +258,7 @@ PlasmoidItem {
                             display: Controls.AbstractButton.IconOnly
                             icon.width: Kirigami.Units.iconSizes.smallMedium
                             icon.height: Kirigami.Units.iconSizes.smallMedium
-                            onClicked: transitionMenu.open()
+                            onClicked: transitionMenu.popup(transitionButton)
 
                             Controls.ToolTip.visible: hovered
                             Controls.ToolTip.text: root.transitionLabel
@@ -375,7 +375,7 @@ PlasmoidItem {
     // -- Μενού πληροφοριών φακέλου -------------------------------------------
     Controls.Menu {
         id: detailsMenu
-        visualParent: detailsButton
+        parent: Controls.Overlay.overlay
 
         Controls.MenuItem {
             text: folderDisplayName && folderDisplayName.length > 0
@@ -393,7 +393,7 @@ PlasmoidItem {
     // -- Μενού επιλογής εφέ μετάβασης ---------------------------------------
     Controls.Menu {
         id: transitionMenu
-        visualParent: transitionButton
+        parent: Controls.Overlay.overlay
 
         Controls.MenuItem {
             text: qsTr("Fade")
