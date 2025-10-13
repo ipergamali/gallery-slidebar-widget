@@ -65,11 +65,61 @@ PlasmoidItem {
     readonly property bool hasImages: availableCount > 0
     property int currentIndex: 0
     property bool slideshowActive: false
-    property string transitionMode: plasmoid.configuration.transitionMode || "fade"
+    property var transitionOptions: [
+        {
+            key: "fade",
+            text: qsTr("Fade"),
+            description: qsTr("Απαλή εναλλαγή"),
+            icon: "preferences-desktop-theme-global",
+            component: fadeComponent
+        },
+        {
+            key: "slide",
+            text: qsTr("Slide"),
+            description: qsTr("Οριζόντια κύλιση"),
+            icon: "view-catalog",
+            component: slideComponent
+        },
+        {
+            key: "zoom",
+            text: qsTr("Zoom"),
+            description: qsTr("Μεγέθυνση/σμίκρυνση"),
+            icon: "zoom-in",
+            component: zoomComponent
+        },
+        {
+            key: "pan",
+            text: qsTr("Pan"),
+            description: qsTr("Απαλή μετατόπιση"),
+            icon: "transform-move",
+            component: panComponent
+        },
+        {
+            key: "flip",
+            text: qsTr("Flip"),
+            description: qsTr("Αναστροφή"),
+            icon: "view-refresh",
+            component: flipComponent
+        },
+        {
+            key: "rotate",
+            text: qsTr("Rotate"),
+            description: qsTr("Περιστροφή"),
+            icon: "object-rotate-right",
+            component: rotateComponent
+        }
+    ]
 
-    readonly property string transitionLabel: transitionMode === "slide"
-        ? qsTr("Slide animation")
-        : qsTr("Fade animation")
+    function normalizedTransition(mode) {
+        const requested = mode || ""
+        const matched = transitionOptions.find((option) => option.key === requested)
+        return matched ? matched.key : transitionOptions[0].key
+    }
+
+    property string transitionMode: normalizedTransition(plasmoid.configuration.transitionMode)
+
+    readonly property var selectedTransition: transitionOptions.find((option) => option.key === transitionMode) || transitionOptions[0]
+    readonly property string transitionLabel: selectedTransition ? selectedTransition.description : ""
 
     preferredRepresentation: fullRepresentation
     implicitWidth: Kirigami.Units.gridUnit * 20
@@ -111,7 +161,13 @@ PlasmoidItem {
         }
 
         function onTransitionModeChanged() {
-            root.transitionMode = plasmoid.configuration.transitionMode || "fade"
+            const normalized = root.normalizedTransition(plasmoid.configuration.transitionMode)
+            if (normalized !== root.transitionMode) {
+                root.transitionMode = normalized
+            }
+            if (normalized !== plasmoid.configuration.transitionMode) {
+                plasmoid.configuration.transitionMode = normalized
+            }
         }
     }
 
@@ -152,7 +208,16 @@ PlasmoidItem {
         onTriggered: root.nextImage()
     }
 
-    Component.onCompleted: refreshSlideshow()
+    Component.onCompleted: {
+        const normalized = root.normalizedTransition(plasmoid.configuration.transitionMode)
+        if (normalized !== plasmoid.configuration.transitionMode) {
+            plasmoid.configuration.transitionMode = normalized
+        }
+        if (normalized !== root.transitionMode) {
+            root.transitionMode = normalized
+        }
+        refreshSlideshow()
+    }
 
     // -- Διάλογος επιλογής φακέλου -------------------------------------------
     FolderDialog {
@@ -162,7 +227,7 @@ PlasmoidItem {
         acceptLabel: qsTr("Select folder")
         onAccepted: {
             if (folderDialog.folder && folderDialog.folder.toString().length > 0) {
-                plasmoid.configuration.imagesFolder = folderDialog.folder
+                plasmoid.configuration.imagesFolder = root.normalizeFolderUrl(folderDialog.folder)
             }
         }
     }
@@ -254,7 +319,7 @@ PlasmoidItem {
                         Controls.ToolButton {
                             id: transitionButton
                             Layout.alignment: Qt.AlignHCenter
-                            icon.name: root.transitionMode === "slide" ? "view-catalog" : "preferences-desktop-theme-global"
+                            icon.name: root.selectedTransition ? root.selectedTransition.icon : "preferences-desktop-theme-global"
                             display: Controls.AbstractButton.IconOnly
                             icon.width: Kirigami.Units.iconSizes.smallMedium
                             icon.height: Kirigami.Units.iconSizes.smallMedium
@@ -263,6 +328,25 @@ PlasmoidItem {
                             Controls.ToolTip.visible: hovered
                             Controls.ToolTip.text: root.transitionLabel
                             Controls.ToolTip.delay: 0
+                        }
+
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.Wrap
+                            text: folderDisplayName && folderDisplayName.length > 0
+                                ? folderDisplayName
+                                : qsTr("Επιλέξτε φάκελο")
+                            color: Kirigami.Theme.textColor
+                            font.pixelSize: Kirigami.Units.smallSpacing * 2.3
+                        }
+
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            horizontalAlignment: Text.AlignHCenter
+                            text: qsTr("Εικόνες: %1").arg(fileModel.count)
+                            color: Kirigami.Theme.disabledTextColor
+                            font.pixelSize: Kirigami.Units.smallSpacing * 2.1
                         }
 
                         Rectangle {
@@ -304,7 +388,7 @@ PlasmoidItem {
                             id: transitionLoader
                             anchors.fill: parent
                             active: hasImages
-                            sourceComponent: root.transitionMode === "slide" ? slideComponent : fadeComponent
+                            sourceComponent: root.selectedTransition ? root.selectedTransition.component : fadeComponent
                         }
 
                         Controls.ToolButton {
@@ -385,7 +469,7 @@ PlasmoidItem {
         }
 
         Controls.MenuItem {
-            text: qsTr("Εικόνες: %1").arg(availableCount)
+            text: qsTr("Εικόνες: %1").arg(fileModel.count)
             enabled: false
         }
     }
@@ -395,23 +479,23 @@ PlasmoidItem {
         id: transitionMenu
         parent: Controls.Overlay.overlay
 
-        Controls.MenuItem {
-            text: qsTr("Fade")
-            checkable: true
-            checked: root.transitionMode === "fade"
-            onTriggered: {
-                root.transitionMode = "fade"
-                plasmoid.configuration.transitionMode = root.transitionMode
-            }
-        }
-
-        Controls.MenuItem {
-            text: qsTr("Slide")
-            checkable: true
-            checked: root.transitionMode === "slide"
-            onTriggered: {
-                root.transitionMode = "slide"
-                plasmoid.configuration.transitionMode = root.transitionMode
+        Repeater {
+            model: root.transitionOptions
+            delegate: Controls.MenuItem {
+                property var option: modelData
+                text: option.text
+                icon.name: option.icon
+                checkable: true
+                checked: root.transitionMode === option.key
+                onTriggered: {
+                    const normalized = root.normalizedTransition(option.key)
+                    if (normalized !== root.transitionMode) {
+                        root.transitionMode = normalized
+                    }
+                    if (normalized !== plasmoid.configuration.transitionMode) {
+                        plasmoid.configuration.transitionMode = normalized
+                    }
+                }
             }
         }
     }
@@ -499,11 +583,290 @@ PlasmoidItem {
                 if (currentIndex >= 0) {
                     slideView.positionViewAtIndex(currentIndex, ListView.Center)
                 }
-            }
 
             Component.onCompleted: {
                 if (currentIndex >= 0) {
                     slideView.positionViewAtIndex(currentIndex, ListView.Center)
+                }
+            }
+        }
+    }
+
+    Component {
+        id: zoomComponent
+
+        Image {
+            id: zoomImage
+            anchors.fill: parent
+            anchors.margins: Kirigami.Units.smallSpacing
+            asynchronous: true
+            cache: true
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            source: hasImages ? fileModel.get(root.currentIndex, "fileUrl") : ""
+            opacity: hasImages ? 1.0 : 0.0
+            scale: 1.0
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 320
+                    easing.type: Easing.InOutQuad
+                }
+            }
+
+            NumberAnimation {
+                id: zoomAnimator
+                target: zoomImage
+                property: "scale"
+                duration: 450
+                easing.type: Easing.InOutQuad
+                from: 1.1
+                to: 1.0
+                onStarted: zoomImage.opacity = 0.0
+                onFinished: zoomImage.opacity = 1.0
+            }
+
+            function restartAnimation() {
+                zoomAnimator.stop()
+                zoomImage.scale = 1.1
+                zoomAnimator.start()
+                zoomImage.opacity = 1.0
+            }
+
+            onStatusChanged: {
+                if (status === Image.Ready) {
+                    restartAnimation()
+                } else if (status === Image.Loading) {
+                    opacity = 0.0
+                }
+            }
+
+            onSourceChanged: {
+                if (hasImages) {
+                    opacity = 0.0
+                    zoomAnimator.stop()
+                    zoomImage.scale = 1.1
+                }
+            }
+        }
+    }
+
+    Component {
+        id: panComponent
+
+        Item {
+            anchors.fill: parent
+            anchors.margins: Kirigami.Units.smallSpacing
+            clip: true
+
+            Image {
+                id: panImage
+                anchors.centerIn: parent
+                width: parent.width * 1.1
+                height: parent.height * 1.1
+                asynchronous: true
+                cache: true
+                fillMode: Image.PreserveAspectCrop
+                smooth: true
+                source: hasImages ? fileModel.get(root.currentIndex, "fileUrl") : ""
+                opacity: hasImages ? 1.0 : 0.0
+                x: 0
+                y: 0
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: 320
+                        easing.type: Easing.InOutQuad
+                    }
+                }
+
+                ParallelAnimation {
+                    id: panAnimator
+                    running: false
+                    NumberAnimation {
+                        target: panImage
+                        property: "x"
+                        from: -Kirigami.Units.gridUnit
+                        to: Kirigami.Units.gridUnit
+                        duration: 450
+                        easing.type: Easing.InOutQuad
+                    }
+                    NumberAnimation {
+                        target: panImage
+                        property: "y"
+                        from: -Kirigami.Units.gridUnit
+                        to: Kirigami.Units.gridUnit
+                        duration: 450
+                        easing.type: Easing.InOutQuad
+                    }
+                    onStarted: panImage.opacity = 0.0
+                    onFinished: {
+                        panImage.opacity = 1.0
+                        panImage.x = 0
+                        panImage.y = 0
+                    }
+                }
+
+                function restartAnimation() {
+                    panAnimator.stop()
+                    panImage.x = -Kirigami.Units.gridUnit
+                    panImage.y = -Kirigami.Units.gridUnit
+                    panAnimator.start()
+                    panImage.opacity = 1.0
+                }
+
+                onStatusChanged: {
+                    if (status === Image.Ready) {
+                        restartAnimation()
+                    } else if (status === Image.Loading) {
+                        opacity = 0.0
+                    }
+                }
+
+                onSourceChanged: {
+                    if (hasImages) {
+                        opacity = 0.0
+                        panAnimator.stop()
+                        panImage.x = -Kirigami.Units.gridUnit
+                        panImage.y = -Kirigami.Units.gridUnit
+                    }
+                }
+            }
+        }
+    }
+
+    Component {
+        id: rotateComponent
+
+        Item {
+            anchors.fill: parent
+            anchors.margins: Kirigami.Units.smallSpacing
+            clip: true
+
+            Image {
+                id: rotateImage
+                anchors.fill: parent
+                asynchronous: true
+                cache: true
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                source: hasImages ? fileModel.get(root.currentIndex, "fileUrl") : ""
+                opacity: hasImages ? 1.0 : 0.0
+                rotation: 0
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: 320
+                        easing.type: Easing.InOutQuad
+                    }
+                }
+            }
+
+                NumberAnimation {
+                    id: rotateAnimator
+                    target: rotateImage
+                    property: "rotation"
+                    duration: 450
+                    easing.type: Easing.InOutQuad
+                    from: -10
+                    to: 0
+                    onStarted: rotateImage.opacity = 0.0
+                    onFinished: rotateImage.opacity = 1.0
+                }
+
+                function restartAnimation() {
+                    rotateAnimator.stop()
+                    rotateImage.rotation = -10
+                    rotateAnimator.start()
+                    rotateImage.opacity = 1.0
+                }
+
+                onStatusChanged: {
+                    if (status === Image.Ready) {
+                        restartAnimation()
+                    } else if (status === Image.Loading) {
+                        opacity = 0.0
+                    }
+                }
+            }
+
+                onSourceChanged: {
+                    if (hasImages) {
+                        opacity = 0.0
+                        rotateAnimator.stop()
+                        rotateImage.rotation = -10
+                    }
+                }
+            }
+        }
+    }
+
+    Component {
+        id: flipComponent
+
+        Item {
+            anchors.fill: parent
+            anchors.margins: Kirigami.Units.smallSpacing
+            clip: true
+
+            Image {
+                id: flipImage
+                anchors.fill: parent
+                asynchronous: true
+                cache: true
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                source: hasImages ? fileModel.get(root.currentIndex, "fileUrl") : ""
+                opacity: hasImages ? 1.0 : 0.0
+
+                transform: Rotation {
+                    id: flipRotation
+                    origin.x: flipImage.width / 2
+                    origin.y: flipImage.height / 2
+                    axis.y: 1
+                    angle: 0
+                }
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: 320
+                        easing.type: Easing.InOutQuad
+                    }
+                }
+
+                NumberAnimation {
+                    id: flipAnimator
+                    target: flipRotation
+                    property: "angle"
+                    duration: 450
+                    easing.type: Easing.InOutQuad
+                    from: 90
+                    to: 0
+                    onStarted: flipImage.opacity = 0.0
+                    onFinished: flipImage.opacity = 1.0
+                }
+
+                function restartAnimation() {
+                    flipAnimator.stop()
+                    flipRotation.angle = 90
+                    flipAnimator.start()
+                    flipImage.opacity = 1.0
+                }
+
+                onStatusChanged: {
+                    if (status === Image.Ready) {
+                        restartAnimation()
+                    } else if (status === Image.Loading) {
+                        opacity = 0.0
+                    }
+                }
+
+                onSourceChanged: {
+                    if (hasImages) {
+                        opacity = 0.0
+                        flipAnimator.stop()
+                        flipRotation.angle = 90
+                    }
                 }
             }
         }
