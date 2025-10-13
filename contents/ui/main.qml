@@ -66,6 +66,7 @@ PlasmoidItem {
         }
     }
 
+
     Dialogs.FolderDialog {
         id: folderDialog
         title: qsTr("Επιλογή φακέλου εικόνων")
@@ -74,6 +75,7 @@ PlasmoidItem {
         onAccepted: {
             if (folderDialog.selectedFolder && folderDialog.selectedFolder.toString().length > 0) {
                 plasmoid.configuration.imagesFolder = folderDialog.selectedFolder
+
             }
         }
     }
