@@ -583,7 +583,6 @@ PlasmoidItem {
                 if (currentIndex >= 0) {
                     slideView.positionViewAtIndex(currentIndex, ListView.Center)
                 }
-            }
 
             Component.onCompleted: {
                 if (currentIndex >= 0) {
@@ -761,6 +760,7 @@ PlasmoidItem {
                         easing.type: Easing.InOutQuad
                     }
                 }
+            }
 
                 NumberAnimation {
                     id: rotateAnimator
@@ -788,6 +788,7 @@ PlasmoidItem {
                         opacity = 0.0
                     }
                 }
+            }
 
                 onSourceChanged: {
                     if (hasImages) {
