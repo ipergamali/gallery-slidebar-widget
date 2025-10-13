@@ -44,6 +44,9 @@ PlasmoidItem {
         return defaultFolder
     }
 
+    readonly property bool hasCustomFolder: plasmoid.configuration.imagesFolder
+        && plasmoid.configuration.imagesFolder.toString().length > 0
+
     readonly property string folderDisplayName: {
         const folderUrl = resolvedFolder
         if (!folderUrl || folderUrl.toString().length === 0) {
@@ -309,11 +312,29 @@ PlasmoidItem {
                             display: Controls.AbstractButton.IconOnly
                             icon.width: Kirigami.Units.iconSizes.smallMedium
                             icon.height: Kirigami.Units.iconSizes.smallMedium
-                            onClicked: detailsMenu.popup(detailsButton)
+                            onClicked: {
+                                if (detailsButton.menu) {
+                                    detailsButton.menu.open()
+                                }
+                            }
 
                             Controls.ToolTip.visible: hovered
                             Controls.ToolTip.text: qsTr("Folder details")
                             Controls.ToolTip.delay: 0
+
+                            menu: Controls.Menu {
+                                Controls.MenuItem {
+                                    enabled: false
+                                    text: root.folderDisplayName.length > 0
+                                        ? qsTr("Φάκελος: %1").arg(root.folderDisplayName)
+                                        : qsTr("Φάκελος: %1").arg(qsTr("Χωρίς επιλογή"))
+                                }
+
+                                Controls.MenuItem {
+                                    enabled: false
+                                    text: qsTr("Εικόνες: %1").arg(fileModel.count)
+                                }
+                            }
                         }
 
                         Controls.ToolButton {
@@ -323,18 +344,45 @@ PlasmoidItem {
                             display: Controls.AbstractButton.IconOnly
                             icon.width: Kirigami.Units.iconSizes.smallMedium
                             icon.height: Kirigami.Units.iconSizes.smallMedium
-                            onClicked: transitionMenu.popup(transitionButton)
+                            onClicked: {
+                                if (transitionButton.menu) {
+                                    transitionButton.menu.open()
+                                }
+                            }
 
                             Controls.ToolTip.visible: hovered
                             Controls.ToolTip.text: root.transitionLabel
                             Controls.ToolTip.delay: 0
+
+                            menu: Controls.Menu {
+                                Repeater {
+                                    model: root.transitionOptions
+                                    delegate: Controls.MenuItem {
+                                        required property var modelData
+                                        property var option: modelData
+                                        text: option.text
+                                        icon.name: option.icon
+                                        checkable: true
+                                        checked: root.transitionMode === option.key
+                                        onTriggered: {
+                                            const normalized = root.normalizedTransition(option.key)
+                                            if (normalized !== root.transitionMode) {
+                                                root.transitionMode = normalized
+                                            }
+                                            if (normalized !== plasmoid.configuration.transitionMode) {
+                                                plasmoid.configuration.transitionMode = normalized
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         Controls.Label {
                             Layout.fillWidth: true
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.Wrap
-                            text: folderDisplayName && folderDisplayName.length > 0
+                            text: root.hasCustomFolder && folderDisplayName.length > 0
                                 ? folderDisplayName
                                 : qsTr("Επιλέξτε φάκελο")
                             color: Kirigami.Theme.textColor
@@ -421,23 +469,6 @@ PlasmoidItem {
                             }
                         }
 
-                        WheelHandler {
-                            id: wheelHandler
-                            target: imageFrame
-                            onWheel: function(event) {
-                                if (availableCount <= 1) {
-                                    return
-                                }
-                                event.accepted = true
-                                if (event.angleDelta.y < 0) {
-                                    root.nextImage()
-                                } else if (event.angleDelta.y > 0) {
-                                    root.previousImage()
-                                }
-                                root.handleManualNavigation()
-                            }
-                        }
-
                         Keys.onLeftPressed: {
                             root.previousImage()
                             root.handleManualNavigation()
@@ -455,50 +486,6 @@ PlasmoidItem {
 
     fullRepresentation: galleryView
     compactRepresentation: galleryView
-
-    // -- Μενού πληροφοριών φακέλου -------------------------------------------
-    Controls.Menu {
-        id: detailsMenu
-        parent: Controls.Overlay.overlay
-
-        Controls.MenuItem {
-            text: folderDisplayName && folderDisplayName.length > 0
-                ? qsTr("Φάκελος: %1").arg(folderDisplayName)
-                : qsTr("Φάκελος: %1").arg(qsTr("Χωρίς επιλογή"))
-            enabled: false
-        }
-
-        Controls.MenuItem {
-            text: qsTr("Εικόνες: %1").arg(fileModel.count)
-            enabled: false
-        }
-    }
-
-    // -- Μενού επιλογής εφέ μετάβασης ---------------------------------------
-    Controls.Menu {
-        id: transitionMenu
-        parent: Controls.Overlay.overlay
-
-        Repeater {
-            model: root.transitionOptions
-            delegate: Controls.MenuItem {
-                property var option: modelData
-                text: option.text
-                icon.name: option.icon
-                checkable: true
-                checked: root.transitionMode === option.key
-                onTriggered: {
-                    const normalized = root.normalizedTransition(option.key)
-                    if (normalized !== root.transitionMode) {
-                        root.transitionMode = normalized
-                    }
-                    if (normalized !== plasmoid.configuration.transitionMode) {
-                        plasmoid.configuration.transitionMode = normalized
-                    }
-                }
-            }
-        }
-    }
 
     // -- Components για διαφορετικά εφέ μετάβασης ---------------------------
     Component {
@@ -574,6 +561,12 @@ PlasmoidItem {
             }
 
             onCurrentIndexChanged: {
+                if (currentIndex >= 0) {
+                    slideView.positionViewAtIndex(currentIndex, ListView.Center)
+                }
+            }
+
+            onWidthChanged: {
                 if (currentIndex >= 0) {
                     slideView.positionViewAtIndex(currentIndex, ListView.Center)
                 }
@@ -761,6 +754,25 @@ PlasmoidItem {
                     }
                 }
             }
+
+                NumberAnimation {
+                    id: rotateAnimator
+                    target: rotateImage
+                    property: "rotation"
+                    duration: 450
+                    easing.type: Easing.InOutQuad
+                    from: -10
+                    to: 0
+                    onStarted: rotateImage.opacity = 0.0
+                    onFinished: rotateImage.opacity = 1.0
+                }
+
+                function restartAnimation() {
+                    rotateAnimator.stop()
+                    rotateImage.rotation = -10
+                    rotateAnimator.start()
+                    rotateImage.opacity = 1.0
+                }
 
                 NumberAnimation {
                     id: rotateAnimator
