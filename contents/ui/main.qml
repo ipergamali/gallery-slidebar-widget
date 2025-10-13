@@ -324,6 +324,8 @@ PlasmoidItem {
                 fillMode: Image.PreserveAspectFit
                 smooth: true
             }
+        }
+    }
 
             Image {
                 id: nextSlideImage
