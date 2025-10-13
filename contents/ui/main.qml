@@ -74,6 +74,7 @@ PlasmoidItem {
         onAccepted: {
             if (folderDialog.selectedFolder && folderDialog.selectedFolder.toString().length > 0) {
                 plasmoid.configuration.imagesFolder = folderDialog.selectedFolder
+
             }
         }
     }
