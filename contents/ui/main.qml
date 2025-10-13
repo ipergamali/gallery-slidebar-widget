@@ -47,7 +47,7 @@ PlasmoidItem {
     readonly property string folderDisplayName: {
         const folderUrl = resolvedFolder
         if (!folderUrl || folderUrl.toString().length === 0) {
-            return qsTr("No folder selected")
+            return qsTr("Pictures")
         }
         const localPath = Qt.urlToLocalFile(folderUrl)
         if (localPath && localPath.length > 0) {
@@ -67,8 +67,8 @@ PlasmoidItem {
     property bool slideshowActive: false
 
     preferredRepresentation: fullRepresentation
-    implicitWidth: Kirigami.Units.gridUnit * 12
-    implicitHeight: Kirigami.Units.gridUnit * 9
+    implicitWidth: Kirigami.Units.gridUnit * 20
+    implicitHeight: Kirigami.Units.gridUnit * 12
 
     function nextImage() {
         if (!hasImages) {
@@ -246,9 +246,7 @@ PlasmoidItem {
                         Controls.Label {
                             Layout.fillWidth: true
                             horizontalAlignment: Text.AlignHCenter
-                            text: hasImages
-                                ? qsTr("%1 images").arg(availableCount)
-                                : qsTr("No images")
+                            text: qsTr("%1 images").arg(availableCount)
                             color: Kirigami.Theme.disabledTextColor
                         }
 
