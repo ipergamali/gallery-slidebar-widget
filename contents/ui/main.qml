@@ -72,8 +72,9 @@ PlasmoidItem {
         currentFolder: root.currentFolder
         fileMode: Dialogs.FileDialog.FileMode.Directory
         onAccepted: {
-            if (selectedFolder && selectedFolder.toString().length > 0) {
-                plasmoid.configuration.imagesFolder = selectedFolder
+            if (folderDialog.selectedFolder && folderDialog.selectedFolder.toString().length > 0) {
+                plasmoid.configuration.imagesFolder = folderDialog.selectedFolder
+
             }
         }
     }
