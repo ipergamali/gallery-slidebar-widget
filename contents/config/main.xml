@@ -6,9 +6,5 @@
             <label>Selected images folder</label>
             <default></default>
         </entry>
-        <entry name="TransitionStyle" type="String">
-            <label>Image transition animation style</label>
-            <default>fade</default>
-        </entry>
     </group>
 </kcfg>
