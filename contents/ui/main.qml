@@ -1,6 +1,5 @@
 import QtQuick 6.5
 import QtQuick.Controls 6.5 as Controls
-import QtQuick.Dialogs 6.5 as Dialogs
 import QtQuick.Layouts 6.5
 import Qt.labs.folderlistmodel
 import Qt.labs.platform
@@ -66,16 +65,14 @@ PlasmoidItem {
         }
     }
 
-
-    Dialogs.FolderDialog {
+    FolderDialog {
         id: folderDialog
         title: qsTr("Επιλογή φακέλου εικόνων")
-        currentFolder: root.currentFolder
+        folder: root.currentFolder
         acceptLabel: qsTr("Select folder")
         onAccepted: {
-            if (folderDialog.selectedFolder && folderDialog.selectedFolder.toString().length > 0) {
-                plasmoid.configuration.imagesFolder = folderDialog.selectedFolder
-
+            if (folderDialog.folder && folderDialog.folder.toString().length > 0) {
+                plasmoid.configuration.imagesFolder = folderDialog.folder
             }
         }
     }
