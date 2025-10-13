@@ -47,7 +47,7 @@ PlasmoidItem {
     readonly property string folderDisplayName: {
         const folderUrl = resolvedFolder
         if (!folderUrl || folderUrl.toString().length === 0) {
-            return qsTr("Pictures")
+            return ""
         }
         const localPath = Qt.urlToLocalFile(folderUrl)
         if (localPath && localPath.length > 0) {
@@ -65,6 +65,11 @@ PlasmoidItem {
     readonly property bool hasImages: availableCount > 0
     property int currentIndex: 0
     property bool slideshowActive: false
+    property string transitionMode: plasmoid.configuration.transitionMode || "fade"
+
+    readonly property string transitionLabel: transitionMode === "slide"
+        ? qsTr("Slide animation")
+        : qsTr("Fade animation")
 
     preferredRepresentation: fullRepresentation
     implicitWidth: Kirigami.Units.gridUnit * 20
@@ -103,6 +108,10 @@ PlasmoidItem {
         function onImagesFolderChanged() {
             root.currentIndex = 0
             root.refreshSlideshow()
+        }
+
+        function onTransitionModeChanged() {
+            root.transitionMode = plasmoid.configuration.transitionMode || "fade"
         }
     }
 
@@ -228,26 +237,38 @@ PlasmoidItem {
                             Controls.ToolTip.delay: 0
                         }
 
+                        Controls.ToolButton {
+                            id: detailsButton
+                            Layout.alignment: Qt.AlignHCenter
+                            icon.name: "view-list-details"
+                            display: Controls.AbstractButton.IconOnly
+                            icon.width: Kirigami.Units.iconSizes.smallMedium
+                            icon.height: Kirigami.Units.iconSizes.smallMedium
+                            onClicked: detailsMenu.open()
+
+                            Controls.ToolTip.visible: hovered
+                            Controls.ToolTip.text: qsTr("Folder details")
+                            Controls.ToolTip.delay: 0
+                        }
+
+                        Controls.ToolButton {
+                            id: transitionButton
+                            Layout.alignment: Qt.AlignHCenter
+                            icon.name: root.transitionMode === "slide" ? "view-catalog" : "preferences-desktop-theme-global"
+                            display: Controls.AbstractButton.IconOnly
+                            icon.width: Kirigami.Units.iconSizes.smallMedium
+                            icon.height: Kirigami.Units.iconSizes.smallMedium
+                            onClicked: transitionMenu.open()
+
+                            Controls.ToolTip.visible: hovered
+                            Controls.ToolTip.text: root.transitionLabel
+                            Controls.ToolTip.delay: 0
+                        }
+
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 1
                             color: Qt.rgba(1, 1, 1, 0.08)
-                        }
-
-                        Controls.Label {
-                            Layout.fillWidth: true
-                            horizontalAlignment: Text.AlignHCenter
-                            wrapMode: Text.WordWrap
-                            maximumLineCount: 2
-                            text: folderDisplayName
-                            color: Kirigami.Theme.textColor
-                        }
-
-                        Controls.Label {
-                            Layout.fillWidth: true
-                            horizontalAlignment: Text.AlignHCenter
-                            text: qsTr("%1 images").arg(availableCount)
-                            color: Kirigami.Theme.disabledTextColor
                         }
 
                         Item {
@@ -279,37 +300,11 @@ PlasmoidItem {
                         visible: hasImages
                         clip: true
 
-                        Image {
-                            id: photo
+                        Loader {
+                            id: transitionLoader
                             anchors.fill: parent
-                            anchors.margins: Kirigami.Units.smallSpacing
-                            asynchronous: true
-                            cache: true
-                            fillMode: Image.PreserveAspectFit
-                            smooth: true
-                            source: hasImages ? fileModel.get(root.currentIndex, "fileUrl") : ""
-                            opacity: hasImages ? 1.0 : 0.0
-
-                            Behavior on opacity {
-                                NumberAnimation {
-                                    duration: 450
-                                    easing.type: Easing.InOutQuad
-                                }
-                            }
-
-                            onStatusChanged: {
-                                if (status === Image.Ready) {
-                                    opacity = 1.0
-                                } else if (status === Image.Loading) {
-                                    opacity = 0.0
-                                }
-                            }
-
-                            onSourceChanged: {
-                                if (hasImages) {
-                                    opacity = 0.0
-                                }
-                            }
+                            active: hasImages
+                            sourceComponent: root.transitionMode === "slide" ? slideComponent : fadeComponent
                         }
 
                         Controls.ToolButton {
@@ -376,4 +371,141 @@ PlasmoidItem {
 
     fullRepresentation: galleryView
     compactRepresentation: galleryView
+
+    // -- Μενού πληροφοριών φακέλου -------------------------------------------
+    Controls.Menu {
+        id: detailsMenu
+        visualParent: detailsButton
+
+        Controls.MenuItem {
+            text: folderDisplayName && folderDisplayName.length > 0
+                ? qsTr("Φάκελος: %1").arg(folderDisplayName)
+                : qsTr("Φάκελος: %1").arg(qsTr("Χωρίς επιλογή"))
+            enabled: false
+        }
+
+        Controls.MenuItem {
+            text: qsTr("Εικόνες: %1").arg(availableCount)
+            enabled: false
+        }
+    }
+
+    // -- Μενού επιλογής εφέ μετάβασης ---------------------------------------
+    Controls.Menu {
+        id: transitionMenu
+        visualParent: transitionButton
+
+        Controls.MenuItem {
+            text: qsTr("Fade")
+            checkable: true
+            checked: root.transitionMode === "fade"
+            onTriggered: {
+                root.transitionMode = "fade"
+                plasmoid.configuration.transitionMode = root.transitionMode
+            }
+        }
+
+        Controls.MenuItem {
+            text: qsTr("Slide")
+            checkable: true
+            checked: root.transitionMode === "slide"
+            onTriggered: {
+                root.transitionMode = "slide"
+                plasmoid.configuration.transitionMode = root.transitionMode
+            }
+        }
+    }
+
+    // -- Components για διαφορετικά εφέ μετάβασης ---------------------------
+    Component {
+        id: fadeComponent
+
+        Image {
+            id: fadeImage
+            anchors.fill: parent
+            anchors.margins: Kirigami.Units.smallSpacing
+            asynchronous: true
+            cache: true
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            source: hasImages ? fileModel.get(root.currentIndex, "fileUrl") : ""
+            opacity: hasImages ? 1.0 : 0.0
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 450
+                    easing.type: Easing.InOutQuad
+                }
+            }
+
+            onStatusChanged: {
+                if (status === Image.Ready) {
+                    opacity = 1.0
+                } else if (status === Image.Loading) {
+                    opacity = 0.0
+                }
+            }
+
+            onSourceChanged: {
+                if (hasImages) {
+                    opacity = 0.0
+                }
+            }
+        }
+    }
+
+    Component {
+        id: slideComponent
+
+        ListView {
+            id: slideView
+            anchors.fill: parent
+            anchors.margins: Kirigami.Units.smallSpacing
+            orientation: ListView.Horizontal
+            spacing: 0
+            interactive: false
+            model: root.availableCount
+            currentIndex: root.currentIndex
+            cacheBuffer: width
+            boundsBehavior: Flickable.StopAtBounds
+            highlightRangeMode: ListView.StrictlyEnforceRange
+            preferredHighlightBegin: 0
+            preferredHighlightEnd: width
+            highlightMoveDuration: 450
+            clip: true
+
+            delegate: Item {
+                width: slideView.width
+                height: slideView.height
+
+                Image {
+                    anchors.fill: parent
+                    anchors.margins: Kirigami.Units.smallSpacing
+                    asynchronous: true
+                    cache: true
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                    source: fileModel.get(index, "fileUrl")
+                }
+            }
+
+            onCurrentIndexChanged: {
+                if (currentIndex >= 0) {
+                    slideView.positionViewAtIndex(currentIndex, ListView.Center)
+                }
+            }
+
+            onWidthChanged: {
+                if (currentIndex >= 0) {
+                    slideView.positionViewAtIndex(currentIndex, ListView.Center)
+                }
+            }
+
+            Component.onCompleted: {
+                if (currentIndex >= 0) {
+                    slideView.positionViewAtIndex(currentIndex, ListView.Center)
+                }
+            }
+        }
+    }
 }
