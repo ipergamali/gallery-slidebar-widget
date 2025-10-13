@@ -66,11 +66,12 @@ PlasmoidItem {
         }
     }
 
-    Dialogs.FileDialog {
+
+    Dialogs.FolderDialog {
         id: folderDialog
         title: qsTr("Επιλογή φακέλου εικόνων")
         currentFolder: root.currentFolder
-        fileMode: Dialogs.FileDialog.FileMode.Directory
+        acceptLabel: qsTr("Select folder")
         onAccepted: {
             if (folderDialog.selectedFolder && folderDialog.selectedFolder.toString().length > 0) {
                 plasmoid.configuration.imagesFolder = folderDialog.selectedFolder
