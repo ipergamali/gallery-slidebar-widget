@@ -96,7 +96,7 @@ PlasmoidItem {
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
                 cache: true
-                source: fileModel.count > 0 ? fileModel.get(currentIndex).fileUrl : ""
+                source: fileModel.count > 0 ? fileModel.get(currentIndex, "fileUrl") : ""
                 opacity: 0.0
 
                 Behavior on opacity {
