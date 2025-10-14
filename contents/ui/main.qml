@@ -335,15 +335,8 @@ PlasmoidItem {
                             Layout.fillHeight: true
                         }
 
-                        Controls.Label {
-                            Layout.alignment: Qt.AlignHCenter
-                            wrapMode: Text.WordWrap
-                            horizontalAlignment: Text.AlignHCenter
-                            width: parent.width
-                            text: qsTr("Εικόνες: %1").arg(fileModel.count)
-                            color: Kirigami.Theme.disabledTextColor
-                            font.pixelSize: Kirigami.Units.smallSpacing * 2.2
-                        }
+                        // Η ένδειξη αριθμού εικόνων παραμένει διαθέσιμη μόνο
+                        // μέσα από το μενού πληροφοριών φακέλου.
                     }
                 }
 
