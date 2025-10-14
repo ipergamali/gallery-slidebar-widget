@@ -438,6 +438,18 @@ PlasmoidItem {
                     easing.type: Easing.InOutQuad
                 }
             }
+
+            onSourceChanged: {
+                opacity = 0.0
+            }
+
+            onStatusChanged: {
+                if (status === Image.Ready) {
+                    opacity = 1.0
+                } else if (status === Image.Loading) {
+                    opacity = 0.0
+                }
+            }
         }
     }
 
@@ -554,6 +566,14 @@ PlasmoidItem {
                     y = -Kirigami.Units.gridUnit
                     opacity = 0.0
                     panAnimation.start()
+                }
+
+                onStatusChanged: {
+                    if (status === Image.Ready) {
+                        opacity = 1.0
+                    } else if (status === Image.Loading) {
+                        opacity = 0.0
+                    }
                 }
             }
         }
