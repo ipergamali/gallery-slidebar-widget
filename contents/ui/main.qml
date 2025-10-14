@@ -438,6 +438,11 @@ PlasmoidItem {
                     easing.type: Easing.InOutQuad
                 }
             }
+        }
+    }
+
+    Component {
+        id: panComponent
 
             onStatusChanged: {
                 if (status === Image.Ready) {
@@ -445,7 +450,6 @@ PlasmoidItem {
                 } else if (status === Image.Loading) {
                     opacity = 0.0
                 }
-            }
 
             onSourceChanged: opacity = 0.0
         }
@@ -477,6 +481,16 @@ PlasmoidItem {
                     easing.type: Easing.InOutQuad
                 }
             }
+        }
+    }
+
+    Component {
+        id: rotateComponent
+
+        Item {
+            anchors.fill: parent
+            anchors.margins: Kirigami.Units.smallSpacing
+            clip: true
 
             onSourceChanged: {
                 if (!initialized) {
@@ -584,10 +598,49 @@ PlasmoidItem {
                     opacity = 0.0
                     panAnimation.start()
                 }
+            }
+
+                NumberAnimation {
+                    id: rotateAnimator
+                    target: rotateImage
+                    property: "rotation"
+                    duration: 450
+                    easing.type: Easing.InOutQuad
+                    from: -10
+                    to: 0
+                    onStarted: rotateImage.opacity = 0.0
+                    onFinished: rotateImage.opacity = 1.0
+                }
+
+                function restartAnimation() {
+                    rotateAnimator.stop()
+                    rotateImage.rotation = -10
+                    rotateAnimator.start()
+                    rotateImage.opacity = 1.0
+                }
+
+                NumberAnimation {
+                    id: rotateAnimator
+                    target: rotateImage
+                    property: "rotation"
+                    duration: 450
+                    easing.type: Easing.InOutQuad
+                    from: -10
+                    to: 0
+                    onStarted: rotateImage.opacity = 0.0
+                    onFinished: rotateImage.opacity = 1.0
+                }
+
+                function restartAnimation() {
+                    rotateAnimator.stop()
+                    rotateImage.rotation = -10
+                    rotateAnimator.start()
+                    rotateImage.opacity = 1.0
+                }
 
                 onStatusChanged: {
                     if (status === Image.Ready) {
-                        opacity = 1.0
+                        restartAnimation()
                     } else if (status === Image.Loading) {
                         opacity = 0.0
                     }
