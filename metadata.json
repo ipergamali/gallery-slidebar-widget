@@ -4,14 +4,15 @@
     "FormatVersion": 1
   },
   "KPlugin": {
-    "Id": "mywidget",
-    "Name": "My Widget",
-    "Description": "Simple Plasma 6 test widget",
-    "Icon": "preferences-system",
+    "Id": "gallery-sidebar",
+    "Name": "Gallery Sidebar",
+    "Description": "Responsive Plasma 6 image viewer with sidebar folder selection",
+    "Icon": "folder-pictures",
     "Authors": [
       { "Name": "Joanne Pergamali", "Email": "ioannapergamali@gmail.com" }
     ],
-    "Version": "1.0",
+    "Version": "1.0.0",
+    "Category": "Multimedia",
     "License": "GPL-3.0"
   },
   "X-Plasma-API-Minimum-Version": "6.0",
