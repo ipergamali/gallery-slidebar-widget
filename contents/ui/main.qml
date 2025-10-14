@@ -9,7 +9,7 @@ import org.kde.plasma.plasmoid
 PlasmoidItem {
     id: root
 
-    // -- Βοηθητικές ιδιότητες φακέλου -----------------------------------------
+    // -- Ρυθμίσεις φακέλου -----------------------------------------------------
     readonly property url defaultFolder: {
         const picturesPath = StandardPaths.writableLocation(StandardPaths.PicturesLocation)
         if (!picturesPath || picturesPath.length === 0) {
@@ -27,13 +27,13 @@ PlasmoidItem {
         if (!value) {
             return ""
         }
-        const asString = value.toString()
-        if (asString.startsWith("file:")) {
-            return asString
+        const text = value.toString()
+        if (text.startsWith("file:")) {
+            return text
         }
         return Qt.platform.os === "windows"
-            ? "file:///" + asString.replace(/\\/g, "/")
-            : "file://" + asString
+            ? "file:///" + text.replace(/\\/g, "/")
+            : "file://" + text
     }
 
     readonly property url resolvedFolder: {
@@ -44,22 +44,15 @@ PlasmoidItem {
         return defaultFolder
     }
 
-    readonly property bool hasCustomFolder: plasmoid.configuration.imagesFolder
-        && plasmoid.configuration.imagesFolder.toString().length > 0
-
     readonly property string folderDisplayName: {
         const folderUrl = resolvedFolder
-        if (!folderUrl || folderUrl.toString().length === 0) {
-            return ""
-        }
         const localPath = Qt.urlToLocalFile(folderUrl)
         if (localPath && localPath.length > 0) {
             const normalized = localPath.replace(/\\/g, "/").replace(/\/$/, "")
-            const segments = normalized.split("/")
-            const lastSegment = segments.length > 0 ? segments[segments.length - 1] : normalized
-            return lastSegment.length > 0 ? lastSegment : normalized
+            const parts = normalized.split("/")
+            return parts.length > 0 ? parts[parts.length - 1] : normalized
         }
-        return folderUrl.toString()
+        return folderUrl ? folderUrl.toString() : ""
     }
 
     // -- Κατάσταση προβολής ---------------------------------------------------
@@ -68,66 +61,45 @@ PlasmoidItem {
     readonly property bool hasImages: availableCount > 0
     property int currentIndex: 0
     property bool slideshowActive: false
-    property var transitionOptions: [
-        {
-            key: "fade",
-            text: qsTr("Fade"),
-            description: qsTr("Απαλή εναλλαγή"),
-            icon: "preferences-desktop-theme-global",
-            component: fadeComponent
-        },
-        {
-            key: "slide",
-            text: qsTr("Slide"),
-            description: qsTr("Οριζόντια κύλιση"),
-            icon: "view-catalog",
-            component: slideComponent
-        },
-        {
-            key: "zoom",
-            text: qsTr("Zoom"),
-            description: qsTr("Μεγέθυνση/σμίκρυνση"),
-            icon: "zoom-in",
-            component: zoomComponent
-        },
-        {
-            key: "pan",
-            text: qsTr("Pan"),
-            description: qsTr("Απαλή μετατόπιση"),
-            icon: "transform-move",
-            component: panComponent
-        },
-        {
-            key: "flip",
-            text: qsTr("Flip"),
-            description: qsTr("Αναστροφή"),
-            icon: "view-refresh",
-            component: flipComponent
-        },
-        {
-            key: "rotate",
-            text: qsTr("Rotate"),
-            description: qsTr("Περιστροφή"),
-            icon: "object-rotate-right",
-            component: rotateComponent
-        }
+
+    // -- Επιλογές animation ----------------------------------------------------
+    property var transitions: [
+        { key: "fade", text: qsTr("Fade"), icon: "preferences-desktop-theme-global", component: fadeComponent },
+        { key: "slide", text: qsTr("Slide"), icon: "view-catalog", component: slideComponent },
+        { key: "zoom", text: qsTr("Zoom"), icon: "zoom-in", component: zoomComponent },
+        { key: "pan", text: qsTr("Pan"), icon: "transform-move", component: panComponent },
+        { key: "flip", text: qsTr("Flip"), icon: "view-refresh", component: flipComponent },
+        { key: "rotate", text: qsTr("Rotate"), icon: "object-rotate-right", component: rotateComponent }
     ]
 
-    function normalizedTransition(mode) {
-        const requested = mode || ""
-        const matched = transitionOptions.find((option) => option.key === requested)
-        return matched ? matched.key : transitionOptions[0].key
+    function normalizeTransition(key) {
+        const requested = key ? key.toString() : ""
+        for (let i = 0; i < transitions.length; ++i) {
+            if (transitions[i].key === requested) {
+                return transitions[i].key
+            }
+        }
+        return transitions[0].key
     }
 
-    property string transitionMode: normalizedTransition(plasmoid.configuration.transitionMode)
+    property string transitionMode: normalizeTransition(plasmoid.configuration.transitionMode)
 
-    readonly property var selectedTransition: transitionOptions.find((option) => option.key === transitionMode) || transitionOptions[0]
-    readonly property string transitionLabel: selectedTransition ? selectedTransition.description : ""
+    function currentTransition() {
+        for (let i = 0; i < transitions.length; ++i) {
+            if (transitions[i].key === transitionMode) {
+                return transitions[i]
+            }
+        }
+        return transitions[0]
+    }
+
+    readonly property var transitionInfo: currentTransition()
 
     preferredRepresentation: fullRepresentation
-    implicitWidth: Kirigami.Units.gridUnit * 20
-    implicitHeight: Kirigami.Units.gridUnit * 12
+    implicitWidth: Kirigami.Units.gridUnit * 22
+    implicitHeight: Kirigami.Units.gridUnit * 14
 
+    // -- Βοηθητικές λειτουργίες -----------------------------------------------
     function nextImage() {
         if (!hasImages) {
             return
@@ -142,29 +114,38 @@ PlasmoidItem {
         currentIndex = (currentIndex - 1 + availableCount) % availableCount
     }
 
-    function handleManualNavigation() {
-        if (slideshowActive && availableCount > 1) {
-            slideshowTimer.restart()
-        }
+    function restartSlideshow() {
+        slideshowTimer.running = slideshowActive && availableCount > 1
     }
 
-    function refreshSlideshow() {
-        if (slideshowActive && availableCount > 1) {
-            slideshowTimer.start()
-        } else {
-            slideshowTimer.stop()
+    function chooseTransition(key) {
+        const normalized = normalizeTransition(key)
+        if (normalized === transitionMode) {
+            return
         }
+        transitionMode = normalized
+        plasmoid.configuration.transitionMode = normalized
     }
+
+    onAvailableCountChanged: {
+        if (!hasImages) {
+            currentIndex = 0
+        } else if (currentIndex >= availableCount) {
+            currentIndex = 0
+        }
+        restartSlideshow()
+    }
+
+    onSlideshowActiveChanged: restartSlideshow()
 
     Connections {
         target: plasmoid.configuration
         function onImagesFolderChanged() {
             root.currentIndex = 0
-            root.refreshSlideshow()
+            restartSlideshow()
         }
-
         function onTransitionModeChanged() {
-            const normalized = root.normalizedTransition(plasmoid.configuration.transitionMode)
+            const normalized = root.normalizeTransition(plasmoid.configuration.transitionMode)
             if (normalized !== root.transitionMode) {
                 root.transitionMode = normalized
             }
@@ -174,35 +155,24 @@ PlasmoidItem {
         }
     }
 
-    onAvailableCountChanged: {
-        if (!hasImages) {
-            currentIndex = 0
-        } else if (currentIndex >= availableCount) {
-            currentIndex = 0
-        }
-        refreshSlideshow()
-    }
-
-    // -- Δεδομένα: φόρτωση αρχείων από φάκελο ---------------------------------
     FolderListModel {
         id: fileModel
         folder: root.resolvedFolder
         nameFilters: ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp", "*.webp"]
         showDirs: false
         showDotAndDotDot: false
-        sortReversed: false
     }
 
     Connections {
         target: fileModel
         function onCountChanged() {
             if (root.currentIndex >= root.availableCount) {
-                root.currentIndex = 0
+                root.currentIndex = root.availableCount > 0 ? root.availableCount - 1 : 0
             }
+            root.restartSlideshow()
         }
     }
 
-    // -- Λογική slideshow ----------------------------------------------------
     Timer {
         id: slideshowTimer
         interval: 5000
@@ -212,17 +182,16 @@ PlasmoidItem {
     }
 
     Component.onCompleted: {
-        const normalized = root.normalizedTransition(plasmoid.configuration.transitionMode)
-        if (normalized !== plasmoid.configuration.transitionMode) {
-            plasmoid.configuration.transitionMode = normalized
+        const normalizedTransition = normalizeTransition(plasmoid.configuration.transitionMode)
+        if (normalizedTransition !== transitionMode) {
+            transitionMode = normalizedTransition
         }
-        if (normalized !== root.transitionMode) {
-            root.transitionMode = normalized
+        if (normalizedTransition !== plasmoid.configuration.transitionMode) {
+            plasmoid.configuration.transitionMode = normalizedTransition
         }
-        refreshSlideshow()
+        restartSlideshow()
     }
 
-    // -- Διάλογος επιλογής φακέλου -------------------------------------------
     FolderDialog {
         id: folderDialog
         title: qsTr("Επιλογή φακέλου εικόνων")
@@ -230,22 +199,20 @@ PlasmoidItem {
         acceptLabel: qsTr("Select folder")
         onAccepted: {
             if (folderDialog.folder && folderDialog.folder.toString().length > 0) {
-                plasmoid.configuration.imagesFolder = root.normalizeFolderUrl(folderDialog.folder)
+                plasmoid.configuration.imagesFolder = normalizeFolderUrl(folderDialog.folder)
             }
         }
     }
 
-    // -- Παρουσίαση: κοινή σύνθεση -------------------------------------------
+    // -- Κύριο περιεχόμενο -----------------------------------------------------
     Component {
-        id: galleryView
+        id: fullRepresentation
 
         Kirigami.ShadowedRectangle {
-            id: background
             anchors.fill: parent
             radius: Kirigami.Units.largeSpacing
             color: Qt.rgba(0.08, 0.09, 0.11, 0.96)
-            border.color: Kirigami.Theme.disabledTextColor
-            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.06)
             shadow.size: Kirigami.Units.largeSpacing
             shadow.color: Qt.rgba(0, 0, 0, 0.35)
 
@@ -257,12 +224,11 @@ PlasmoidItem {
                 anchors.margins: Kirigami.Units.smallSpacing * 2
                 spacing: Kirigami.Units.smallSpacing * 2
 
-                // -- Sidebar με πληροφορίες & χειριστήρια ---------------------
+                // -- Sidebar με κουμπιά ---------------------------------------
                 Rectangle {
-                    id: sidebar
-                    Layout.preferredWidth: Kirigami.Units.gridUnit * 2.2
+                    Layout.preferredWidth: Kirigami.Units.gridUnit * 2.4
                     Layout.fillHeight: true
-                    radius: background.radius
+                    radius: Kirigami.Units.mediumSpacing
                     color: Qt.rgba(0.12, 0.13, 0.16, 0.96)
                     border.color: Qt.rgba(1, 1, 1, 0.06)
 
@@ -282,7 +248,7 @@ PlasmoidItem {
                             onClicked: folderDialog.open()
 
                             Controls.ToolTip.visible: hovered
-                            Controls.ToolTip.text: qsTr("Change image folder")
+                            Controls.ToolTip.text: qsTr("Αλλαγή φακέλου εικόνων")
                             Controls.ToolTip.delay: 0
                         }
 
@@ -295,13 +261,13 @@ PlasmoidItem {
                             icon.height: Kirigami.Units.iconSizes.smallMedium
                             onClicked: {
                                 root.slideshowActive = !root.slideshowActive
-                                root.refreshSlideshow()
+                                root.restartSlideshow()
                             }
 
                             Controls.ToolTip.visible: hovered
                             Controls.ToolTip.text: root.slideshowActive
-                                ? qsTr("Pause slideshow")
-                                : qsTr("Start slideshow")
+                                ? qsTr("Παύση slideshow")
+                                : qsTr("Έναρξη slideshow")
                             Controls.ToolTip.delay: 0
                         }
 
@@ -312,187 +278,151 @@ PlasmoidItem {
                             display: Controls.AbstractButton.IconOnly
                             icon.width: Kirigami.Units.iconSizes.smallMedium
                             icon.height: Kirigami.Units.iconSizes.smallMedium
-                            onClicked: {
-                                if (detailsButton.menu) {
-                                    detailsButton.menu.open()
-                                }
-                            }
+                            onClicked: detailsMenu.popup(detailsButton)
 
                             Controls.ToolTip.visible: hovered
-                            Controls.ToolTip.text: qsTr("Folder details")
+                            Controls.ToolTip.text: qsTr("Πληροφορίες φακέλου")
                             Controls.ToolTip.delay: 0
+                        }
 
-                            menu: Controls.Menu {
-                                Controls.MenuItem {
-                                    enabled: false
-                                    text: root.folderDisplayName.length > 0
-                                        ? qsTr("Φάκελος: %1").arg(root.folderDisplayName)
-                                        : qsTr("Φάκελος: %1").arg(qsTr("Χωρίς επιλογή"))
-                                }
+                        Controls.Menu {
+                            id: detailsMenu
 
-                                Controls.MenuItem {
-                                    enabled: false
-                                    text: qsTr("Εικόνες: %1").arg(fileModel.count)
-                                }
+                            Controls.MenuItem {
+                                enabled: false
+                                text: folderDisplayName.length > 0
+                                    ? qsTr("Φάκελος: %1").arg(folderDisplayName)
+                                    : qsTr("Φάκελος: %1").arg(qsTr("Προεπιλογή"))
+                            }
+
+                            Controls.MenuItem {
+                                enabled: false
+                                text: qsTr("Εικόνες: %1").arg(fileModel.count)
                             }
                         }
 
                         Controls.ToolButton {
                             id: transitionButton
                             Layout.alignment: Qt.AlignHCenter
-                            icon.name: root.selectedTransition ? root.selectedTransition.icon : "preferences-desktop-theme-global"
+                            icon.name: transitionInfo ? transitionInfo.icon : "preferences-desktop-theme-global"
                             display: Controls.AbstractButton.IconOnly
                             icon.width: Kirigami.Units.iconSizes.smallMedium
                             icon.height: Kirigami.Units.iconSizes.smallMedium
-                            onClicked: {
-                                if (transitionButton.menu) {
-                                    transitionButton.menu.open()
-                                }
-                            }
+                            onClicked: transitionMenu.popup(transitionButton)
 
                             Controls.ToolTip.visible: hovered
-                            Controls.ToolTip.text: root.transitionLabel
+                            Controls.ToolTip.text: transitionInfo ? transitionInfo.text : ""
                             Controls.ToolTip.delay: 0
+                        }
 
-                            menu: Controls.Menu {
-                                Repeater {
-                                    model: root.transitionOptions
-                                    delegate: Controls.MenuItem {
-                                        required property var modelData
-                                        property var option: modelData
-                                        text: option.text
-                                        icon.name: option.icon
-                                        checkable: true
-                                        checked: root.transitionMode === option.key
-                                        onTriggered: {
-                                            const normalized = root.normalizedTransition(option.key)
-                                            if (normalized !== root.transitionMode) {
-                                                root.transitionMode = normalized
-                                            }
-                                            if (normalized !== plasmoid.configuration.transitionMode) {
-                                                plasmoid.configuration.transitionMode = normalized
-                                            }
-                                        }
-                                    }
+                        Controls.Menu {
+                            id: transitionMenu
+
+                            Repeater {
+                                model: root.transitions
+                                delegate: Controls.MenuItem {
+                                    required property var modelData
+                                    text: modelData.text
+                                    icon.name: modelData.icon
+                                    checkable: true
+                                    checked: root.transitionMode === modelData.key
+                                    onTriggered: root.chooseTransition(modelData.key)
                                 }
                             }
-                        }
-
-                        Controls.Label {
-                            Layout.fillWidth: true
-                            horizontalAlignment: Text.AlignHCenter
-                            wrapMode: Text.Wrap
-                            text: root.hasCustomFolder && folderDisplayName.length > 0
-                                ? folderDisplayName
-                                : qsTr("Επιλέξτε φάκελο")
-                            color: Kirigami.Theme.textColor
-                            font.pixelSize: Kirigami.Units.smallSpacing * 2.3
-                        }
-
-                        Controls.Label {
-                            Layout.fillWidth: true
-                            horizontalAlignment: Text.AlignHCenter
-                            text: qsTr("Εικόνες: %1").arg(fileModel.count)
-                            color: Kirigami.Theme.disabledTextColor
-                            font.pixelSize: Kirigami.Units.smallSpacing * 2.1
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 1
-                            color: Qt.rgba(1, 1, 1, 0.08)
                         }
 
                         Item {
                             Layout.fillHeight: true
                         }
+
+                        Controls.Label {
+                            Layout.alignment: Qt.AlignHCenter
+                            wrapMode: Text.WordWrap
+                            horizontalAlignment: Text.AlignHCenter
+                            width: parent.width
+                            text: qsTr("Εικόνες: %1").arg(fileModel.count)
+                            color: Kirigami.Theme.disabledTextColor
+                            font.pixelSize: Kirigami.Units.smallSpacing * 2.2
+                        }
                     }
                 }
 
-                // -- Κύριος χώρος προβολής εικόνας ---------------------------
+                // -- Χώρος προβολής εικόνας ----------------------------------
                 Item {
-                    id: viewerArea
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     focus: true
 
                     Controls.Label {
                         anchors.centerIn: parent
+                        width: Math.min(parent.width * 0.8, Kirigami.Units.gridUnit * 12)
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WordWrap
-                        width: Math.min(parent.width * 0.8, Kirigami.Units.gridUnit * 10)
-                        text: qsTr("Δεν βρέθηκαν εικόνες στον φάκελο")
                         visible: !hasImages
+                        text: qsTr("Δεν βρέθηκαν εικόνες στον φάκελο")
                         color: Kirigami.Theme.disabledTextColor
                     }
 
-                    Item {
-                        id: imageFrame
+                    Loader {
+                        id: transitionLoader
                         anchors.fill: parent
-                        visible: hasImages
-                        clip: true
+                        active: hasImages
+                        asynchronous: true
+                        sourceComponent: hasImages && root.transitionInfo
+                            ? root.transitionInfo.component
+                            : fadeComponent
+                    }
 
-                        Loader {
-                            id: transitionLoader
-                            anchors.fill: parent
-                            active: hasImages
-                            sourceComponent: root.selectedTransition ? root.selectedTransition.component : fadeComponent
-                        }
-
-                        Controls.ToolButton {
-                            id: previousButton
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.left: parent.left
-                            anchors.leftMargin: Kirigami.Units.smallSpacing
-                            icon.name: "go-previous"
-                            display: Controls.AbstractButton.IconOnly
-                            enabled: availableCount > 1
-                            opacity: enabled ? 0.9 : 0.4
-                            onClicked: {
-                                root.previousImage()
-                                root.handleManualNavigation()
-                            }
-                        }
-
-                        Controls.ToolButton {
-                            id: nextButton
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.right: parent.right
-                            anchors.rightMargin: Kirigami.Units.smallSpacing
-                            icon.name: "go-next"
-                            display: Controls.AbstractButton.IconOnly
-                            enabled: availableCount > 1
-                            opacity: enabled ? 0.9 : 0.4
-                            onClicked: {
-                                root.nextImage()
-                                root.handleManualNavigation()
-                            }
-                        }
-
-                        Keys.onLeftPressed: {
+                    Controls.ToolButton {
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.left: parent.left
+                        anchors.leftMargin: Kirigami.Units.smallSpacing
+                        icon.name: "go-previous"
+                        display: Controls.AbstractButton.IconOnly
+                        enabled: hasImages && availableCount > 1
+                        opacity: enabled ? 0.9 : 0.3
+                        onClicked: {
                             root.previousImage()
-                            root.handleManualNavigation()
+                            root.restartSlideshow()
                         }
+                    }
 
-                        Keys.onRightPressed: {
+                    Controls.ToolButton {
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.right: parent.right
+                        anchors.rightMargin: Kirigami.Units.smallSpacing
+                        icon.name: "go-next"
+                        display: Controls.AbstractButton.IconOnly
+                        enabled: hasImages && availableCount > 1
+                        opacity: enabled ? 0.9 : 0.3
+                        onClicked: {
                             root.nextImage()
-                            root.handleManualNavigation()
+                            root.restartSlideshow()
                         }
+                    }
+
+                    Keys.onLeftPressed: {
+                        root.previousImage()
+                        root.restartSlideshow()
+                    }
+
+                    Keys.onRightPressed: {
+                        root.nextImage()
+                        root.restartSlideshow()
                     }
                 }
             }
         }
     }
 
-    fullRepresentation: galleryView
-    compactRepresentation: galleryView
+    fullRepresentation: fullRepresentation
+    compactRepresentation: fullRepresentation
 
-    // -- Components για διαφορετικά εφέ μετάβασης ---------------------------
+    // -- Components εφέ μετάβασης ---------------------------------------------
     Component {
         id: fadeComponent
 
         Image {
-            id: fadeImage
             anchors.fill: parent
             anchors.margins: Kirigami.Units.smallSpacing
             asynchronous: true
@@ -500,14 +430,19 @@ PlasmoidItem {
             fillMode: Image.PreserveAspectFit
             smooth: true
             source: hasImages ? fileModel.get(root.currentIndex, "fileUrl") : ""
-            opacity: hasImages ? 1.0 : 0.0
+            opacity: 0.0
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: 450
+                    duration: 420
                     easing.type: Easing.InOutQuad
                 }
             }
+        }
+    }
+
+    Component {
+        id: panComponent
 
             onStatusChanged: {
                 if (status === Image.Ready) {
@@ -515,71 +450,64 @@ PlasmoidItem {
                 } else if (status === Image.Loading) {
                     opacity = 0.0
                 }
-            }
 
-            onSourceChanged: {
-                if (hasImages) {
-                    opacity = 0.0
-                }
-            }
+            onSourceChanged: opacity = 0.0
         }
     }
 
     Component {
         id: slideComponent
 
-        ListView {
-            id: slideView
+        Image {
+            id: slideImage
             anchors.fill: parent
             anchors.margins: Kirigami.Units.smallSpacing
-            orientation: ListView.Horizontal
-            spacing: 0
-            interactive: false
-            model: root.availableCount
-            currentIndex: root.currentIndex
-            cacheBuffer: width
-            boundsBehavior: Flickable.StopAtBounds
-            highlightRangeMode: ListView.StrictlyEnforceRange
-            preferredHighlightBegin: 0
-            preferredHighlightEnd: width
-            highlightMoveDuration: 450
+            asynchronous: true
+            cache: true
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            source: hasImages ? fileModel.get(root.currentIndex, "fileUrl") : ""
+            opacity: 1.0
+            x: 0
+            property bool initialized: false
+
+            Behavior on opacity {
+                NumberAnimation { duration: 260; easing.type: Easing.InOutQuad }
+            }
+
+            Behavior on x {
+                NumberAnimation {
+                    duration: 420
+                    easing.type: Easing.InOutQuad
+                }
+            }
+        }
+    }
+
+    Component {
+        id: rotateComponent
+
+        Item {
+            anchors.fill: parent
+            anchors.margins: Kirigami.Units.smallSpacing
             clip: true
 
-            delegate: Item {
-                width: slideView.width
-                height: slideView.height
-
-                Image {
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.smallSpacing
-                    asynchronous: true
-                    cache: true
-                    fillMode: Image.PreserveAspectFit
-                    smooth: true
-                    source: fileModel.get(index, "fileUrl")
+            onSourceChanged: {
+                if (!initialized) {
+                    initialized = true
+                    x = 0
+                } else {
+                    x = parent ? parent.width : 0
+                    Qt.callLater(function() { slideImage.x = 0 })
                 }
+                opacity = 0.0
             }
 
-            onCurrentIndexChanged: {
-                if (currentIndex >= 0) {
-                    slideView.positionViewAtIndex(currentIndex, ListView.Center)
-                }
-            }
-
-            onWidthChanged: {
-                if (currentIndex >= 0) {
-                    slideView.positionViewAtIndex(currentIndex, ListView.Center)
-                }
-            }
-
-            onWidthChanged: {
-                if (currentIndex >= 0) {
-                    slideView.positionViewAtIndex(currentIndex, ListView.Center)
-                }
-
-            Component.onCompleted: {
-                if (currentIndex >= 0) {
-                    slideView.positionViewAtIndex(currentIndex, ListView.Center)
+            onStatusChanged: {
+                if (status === Image.Ready) {
+                    opacity = 1.0
+                } else if (status === Image.Loading) {
+                    opacity = 0.0
                 }
             }
         }
@@ -597,48 +525,35 @@ PlasmoidItem {
             fillMode: Image.PreserveAspectFit
             smooth: true
             source: hasImages ? fileModel.get(root.currentIndex, "fileUrl") : ""
-            opacity: hasImages ? 1.0 : 0.0
-            scale: 1.0
+            opacity: 0.0
+            scale: 1.1
 
             Behavior on opacity {
-                NumberAnimation {
-                    duration: 320
-                    easing.type: Easing.InOutQuad
-                }
+                NumberAnimation { duration: 320; easing.type: Easing.InOutQuad }
             }
 
-            NumberAnimation {
-                id: zoomAnimator
+            PropertyAnimation {
+                id: zoomAnimation
                 target: zoomImage
                 property: "scale"
-                duration: 450
+                duration: 420
                 easing.type: Easing.InOutQuad
                 from: 1.1
                 to: 1.0
-                onStarted: zoomImage.opacity = 0.0
-                onFinished: zoomImage.opacity = 1.0
             }
 
-            function restartAnimation() {
-                zoomAnimator.stop()
-                zoomImage.scale = 1.1
-                zoomAnimator.start()
-                zoomImage.opacity = 1.0
+            onSourceChanged: {
+                zoomAnimation.stop()
+                scale = 1.1
+                opacity = 0.0
+                zoomAnimation.start()
             }
 
             onStatusChanged: {
                 if (status === Image.Ready) {
-                    restartAnimation()
+                    opacity = 1.0
                 } else if (status === Image.Loading) {
                     opacity = 0.0
-                }
-            }
-
-            onSourceChanged: {
-                if (hasImages) {
-                    opacity = 0.0
-                    zoomAnimator.stop()
-                    zoomImage.scale = 1.1
                 }
             }
         }
@@ -662,50 +577,65 @@ PlasmoidItem {
                 fillMode: Image.PreserveAspectCrop
                 smooth: true
                 source: hasImages ? fileModel.get(root.currentIndex, "fileUrl") : ""
-                opacity: hasImages ? 1.0 : 0.0
-                x: 0
-                y: 0
+                opacity: 0.0
+                x: -Kirigami.Units.gridUnit
+                y: -Kirigami.Units.gridUnit
 
                 Behavior on opacity {
-                    NumberAnimation {
-                        duration: 320
-                        easing.type: Easing.InOutQuad
-                    }
+                    NumberAnimation { duration: 320; easing.type: Easing.InOutQuad }
                 }
 
                 ParallelAnimation {
-                    id: panAnimator
-                    running: false
-                    NumberAnimation {
-                        target: panImage
-                        property: "x"
-                        from: -Kirigami.Units.gridUnit
-                        to: Kirigami.Units.gridUnit
-                        duration: 450
-                        easing.type: Easing.InOutQuad
-                    }
-                    NumberAnimation {
-                        target: panImage
-                        property: "y"
-                        from: -Kirigami.Units.gridUnit
-                        to: Kirigami.Units.gridUnit
-                        duration: 450
-                        easing.type: Easing.InOutQuad
-                    }
-                    onStarted: panImage.opacity = 0.0
-                    onFinished: {
-                        panImage.opacity = 1.0
-                        panImage.x = 0
-                        panImage.y = 0
-                    }
+                    id: panAnimation
+                    NumberAnimation { target: panImage; property: "x"; duration: 420; easing.type: Easing.InOutQuad; to: 0 }
+                    NumberAnimation { target: panImage; property: "y"; duration: 420; easing.type: Easing.InOutQuad; to: 0 }
+                }
+
+                onSourceChanged: {
+                    panAnimation.stop()
+                    x = -Kirigami.Units.gridUnit
+                    y = -Kirigami.Units.gridUnit
+                    opacity = 0.0
+                    panAnimation.start()
+                }
+            }
+
+                NumberAnimation {
+                    id: rotateAnimator
+                    target: rotateImage
+                    property: "rotation"
+                    duration: 450
+                    easing.type: Easing.InOutQuad
+                    from: -10
+                    to: 0
+                    onStarted: rotateImage.opacity = 0.0
+                    onFinished: rotateImage.opacity = 1.0
                 }
 
                 function restartAnimation() {
-                    panAnimator.stop()
-                    panImage.x = -Kirigami.Units.gridUnit
-                    panImage.y = -Kirigami.Units.gridUnit
-                    panAnimator.start()
-                    panImage.opacity = 1.0
+                    rotateAnimator.stop()
+                    rotateImage.rotation = -10
+                    rotateAnimator.start()
+                    rotateImage.opacity = 1.0
+                }
+
+                NumberAnimation {
+                    id: rotateAnimator
+                    target: rotateImage
+                    property: "rotation"
+                    duration: 450
+                    easing.type: Easing.InOutQuad
+                    from: -10
+                    to: 0
+                    onStarted: rotateImage.opacity = 0.0
+                    onFinished: rotateImage.opacity = 1.0
+                }
+
+                function restartAnimation() {
+                    rotateAnimator.stop()
+                    rotateImage.rotation = -10
+                    rotateAnimator.start()
+                    rotateImage.opacity = 1.0
                 }
 
                 onStatusChanged: {
@@ -713,15 +643,6 @@ PlasmoidItem {
                         restartAnimation()
                     } else if (status === Image.Loading) {
                         opacity = 0.0
-                    }
-                }
-
-                onSourceChanged: {
-                    if (hasImages) {
-                        opacity = 0.0
-                        panAnimator.stop()
-                        panImage.x = -Kirigami.Units.gridUnit
-                        panImage.y = -Kirigami.Units.gridUnit
                     }
                 }
             }
@@ -731,83 +652,44 @@ PlasmoidItem {
     Component {
         id: rotateComponent
 
-        Item {
+        Image {
+            id: rotateImage
             anchors.fill: parent
             anchors.margins: Kirigami.Units.smallSpacing
-            clip: true
+            asynchronous: true
+            cache: true
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            source: hasImages ? fileModel.get(root.currentIndex, "fileUrl") : ""
+            opacity: 0.0
+            rotation: -12
 
-            Image {
-                id: rotateImage
-                anchors.fill: parent
-                asynchronous: true
-                cache: true
-                fillMode: Image.PreserveAspectFit
-                smooth: true
-                source: hasImages ? fileModel.get(root.currentIndex, "fileUrl") : ""
-                opacity: hasImages ? 1.0 : 0.0
-                rotation: 0
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: 320
-                        easing.type: Easing.InOutQuad
-                    }
-                }
+            Behavior on opacity {
+                NumberAnimation { duration: 320; easing.type: Easing.InOutQuad }
             }
 
-                NumberAnimation {
-                    id: rotateAnimator
-                    target: rotateImage
-                    property: "rotation"
-                    duration: 450
-                    easing.type: Easing.InOutQuad
-                    from: -10
-                    to: 0
-                    onStarted: rotateImage.opacity = 0.0
-                    onFinished: rotateImage.opacity = 1.0
-                }
-
-                function restartAnimation() {
-                    rotateAnimator.stop()
-                    rotateImage.rotation = -10
-                    rotateAnimator.start()
-                    rotateImage.opacity = 1.0
-                }
-
-                NumberAnimation {
-                    id: rotateAnimator
-                    target: rotateImage
-                    property: "rotation"
-                    duration: 450
-                    easing.type: Easing.InOutQuad
-                    from: -10
-                    to: 0
-                    onStarted: rotateImage.opacity = 0.0
-                    onFinished: rotateImage.opacity = 1.0
-                }
-
-                function restartAnimation() {
-                    rotateAnimator.stop()
-                    rotateImage.rotation = -10
-                    rotateAnimator.start()
-                    rotateImage.opacity = 1.0
-                }
-
-                onStatusChanged: {
-                    if (status === Image.Ready) {
-                        restartAnimation()
-                    } else if (status === Image.Loading) {
-                        opacity = 0.0
-                    }
-                }
+            PropertyAnimation {
+                id: rotateAnimation
+                target: rotateImage
+                property: "rotation"
+                duration: 420
+                easing.type: Easing.InOutQuad
+                from: -12
+                to: 0
             }
 
-                onSourceChanged: {
-                    if (hasImages) {
-                        opacity = 0.0
-                        rotateAnimator.stop()
-                        rotateImage.rotation = -10
-                    }
+            onSourceChanged: {
+                rotateAnimation.stop()
+                rotation = -12
+                opacity = 0.0
+                rotateAnimation.start()
+            }
+
+            onStatusChanged: {
+                if (status === Image.Ready) {
+                    opacity = 1.0
+                } else if (status === Image.Loading) {
+                    opacity = 0.0
                 }
             }
         }
@@ -829,55 +711,42 @@ PlasmoidItem {
                 fillMode: Image.PreserveAspectFit
                 smooth: true
                 source: hasImages ? fileModel.get(root.currentIndex, "fileUrl") : ""
-                opacity: hasImages ? 1.0 : 0.0
+                opacity: 0.0
 
                 transform: Rotation {
                     id: flipRotation
                     origin.x: flipImage.width / 2
                     origin.y: flipImage.height / 2
                     axis.y: 1
-                    angle: 0
+                    angle: 90
                 }
 
                 Behavior on opacity {
-                    NumberAnimation {
-                        duration: 320
-                        easing.type: Easing.InOutQuad
-                    }
+                    NumberAnimation { duration: 320; easing.type: Easing.InOutQuad }
                 }
 
-                NumberAnimation {
-                    id: flipAnimator
+                PropertyAnimation {
+                    id: flipAnimation
                     target: flipRotation
                     property: "angle"
-                    duration: 450
+                    duration: 420
                     easing.type: Easing.InOutQuad
                     from: 90
                     to: 0
-                    onStarted: flipImage.opacity = 0.0
-                    onFinished: flipImage.opacity = 1.0
                 }
 
-                function restartAnimation() {
-                    flipAnimator.stop()
+                onSourceChanged: {
+                    flipAnimation.stop()
                     flipRotation.angle = 90
-                    flipAnimator.start()
-                    flipImage.opacity = 1.0
+                    opacity = 0.0
+                    flipAnimation.start()
                 }
 
                 onStatusChanged: {
                     if (status === Image.Ready) {
-                        restartAnimation()
+                        opacity = 1.0
                     } else if (status === Image.Loading) {
                         opacity = 0.0
-                    }
-                }
-
-                onSourceChanged: {
-                    if (hasImages) {
-                        opacity = 0.0
-                        flipAnimator.stop()
-                        flipRotation.angle = 90
                     }
                 }
             }
