@@ -442,20 +442,6 @@ PlasmoidItem {
     }
 
     Component {
-        id: panComponent
-
-            onStatusChanged: {
-                if (status === Image.Ready) {
-                    opacity = 1.0
-                } else if (status === Image.Loading) {
-                    opacity = 0.0
-                }
-
-            onSourceChanged: opacity = 0.0
-        }
-    }
-
-    Component {
         id: slideComponent
 
         Image {
@@ -479,35 +465,6 @@ PlasmoidItem {
                 NumberAnimation {
                     duration: 420
                     easing.type: Easing.InOutQuad
-                }
-            }
-        }
-    }
-
-    Component {
-        id: rotateComponent
-
-        Item {
-            anchors.fill: parent
-            anchors.margins: Kirigami.Units.smallSpacing
-            clip: true
-
-            onSourceChanged: {
-                if (!initialized) {
-                    initialized = true
-                    x = 0
-                } else {
-                    x = parent ? parent.width : 0
-                    Qt.callLater(function() { slideImage.x = 0 })
-                }
-                opacity = 0.0
-            }
-
-            onStatusChanged: {
-                if (status === Image.Ready) {
-                    opacity = 1.0
-                } else if (status === Image.Loading) {
-                    opacity = 0.0
                 }
             }
         }
