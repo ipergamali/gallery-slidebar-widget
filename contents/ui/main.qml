@@ -114,6 +114,16 @@ PlasmoidItem {
         currentIndex = (currentIndex - 1 + availableCount) % availableCount
     }
 
+    function openCurrentImage() {
+        if (!hasImages) {
+            return
+        }
+        const current = fileModel.get(currentIndex, "fileUrl")
+        if (current && current.toString().length > 0) {
+            Qt.openUrlExternally(current)
+        }
+    }
+
     function restartSlideshow() {
         slideshowTimer.running = slideshowActive && availableCount > 1
     }
@@ -364,6 +374,15 @@ PlasmoidItem {
                         sourceComponent: hasImages && root.transitionInfo
                             ? root.transitionInfo.component
                             : fadeComponent
+                    }
+
+                    MouseArea {
+                        anchors.fill: transitionLoader
+                        enabled: hasImages
+                        hoverEnabled: hasImages
+                        cursorShape: hasImages ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        acceptedButtons: Qt.LeftButton
+                        onClicked: root.openCurrentImage()
                     }
 
                     Controls.ToolButton {
