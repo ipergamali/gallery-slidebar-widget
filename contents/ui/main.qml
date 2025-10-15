@@ -115,6 +115,68 @@ PlasmoidItem {
         currentIndex = (currentIndex - 1 + availableCount) % availableCount
     }
 
+    property bool kioModuleChecked: false
+    property bool kioModuleAvailable: false
+    property var kioComponent: null
+
+    function ensureKioComponent() {
+        if (kioModuleChecked) {
+            return kioModuleAvailable
+        }
+
+        kioModuleChecked = true
+
+        try {
+            const component = Qt.createComponent(
+                "import QtQml\nimport org.kde.kio as KIO\nKIO.OpenUrlJob {}",
+                Component.PreferSynchronous
+            )
+
+            if (component.status === Component.Error) {
+                console.warn("Το module org.kde.kio δεν είναι διαθέσιμο:", component.errorString())
+                kioModuleAvailable = false
+                return false
+            } else if (component.status !== Component.Ready) {
+                console.warn("Το module org.kde.kio δεν φορτώθηκε συγχρονισμένα (κατάσταση:", component.status, ")")
+                kioModuleAvailable = false
+                return false
+            }
+
+            kioComponent = component
+            kioModuleAvailable = true
+            return true
+        } catch (error) {
+            console.warn("Σφάλμα κατά τον έλεγχο του module org.kde.kio:", error)
+            kioModuleAvailable = false
+            return false
+        }
+    }
+
+    function startKioJob(url) {
+        if (!kioComponent) {
+            return false
+        }
+
+        const job = kioComponent.createObject(root, {
+            url: url
+        })
+
+        if (!job) {
+            console.warn("Αδυναμία δημιουργίας KIO.OpenUrlJob για", url)
+            return false
+        }
+
+        job.finished.connect(function() {
+            if (job.error) {
+                console.warn("Αποτυχία ανοίγματος εικόνας με KIO:", job.errorText)
+            }
+            job.destroy()
+        })
+
+        job.start()
+        return true
+    }
+
     function openCurrentImage() {
         if (!hasImages) {
             return
@@ -125,27 +187,16 @@ PlasmoidItem {
             return
         }
 
-        const job = openImageJobComponent.createObject(root, {
-            url: current
-        })
+        let opened = false
 
-        if (!job) {
-            console.warn("Αδυναμία δημιουργίας KIO.OpenUrlJob για", current)
-            return
+        if (ensureKioComponent()) {
+            opened = startKioJob(current)
         }
 
-        job.start()
-    }
-
-    Component {
-        id: openImageJobComponent
-
-        KIO.OpenUrlJob {
-            onFinished: {
-                if (error) {
-                    console.warn("Αποτυχία ανοίγματος εικόνας:", errorText)
-                }
-                destroy()
+        if (!opened) {
+            const fallbackOk = Qt.openUrlExternally(current)
+            if (!fallbackOk) {
+                console.warn("Αποτυχία ανοίγματος εικόνας με Qt.openUrlExternally για", current)
             }
         }
     }
