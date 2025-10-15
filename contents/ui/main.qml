@@ -1,15 +1,12 @@
-import QtQuick 6.5
-import QtQuick.Controls 6.5 as Controls
-import QtQuick.Layouts 6.5
+import QtQuick 6.0
+import QtQuick.Controls 6.0
 import Qt.labs.folderlistmodel
-import Qt.labs.platform
-import org.kde.kio as KIO
+import QtQuick.Dialogs
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.plasmoid
 
 PlasmoidItem {
     id: root
-
     // -- Ρυθμίσεις φακέλου -----------------------------------------------------
     readonly property url defaultFolder: {
         const picturesPath = StandardPaths.writableLocation(StandardPaths.PicturesLocation)
