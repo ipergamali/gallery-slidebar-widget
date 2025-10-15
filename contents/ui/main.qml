@@ -3,6 +3,7 @@ import QtQuick.Controls 6.5 as Controls
 import QtQuick.Layouts 6.5
 import Qt.labs.folderlistmodel
 import Qt.labs.platform
+import org.kde.kio as Kio
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.plasmoid
 
@@ -114,6 +115,21 @@ PlasmoidItem {
         currentIndex = (currentIndex - 1 + availableCount) % availableCount
     }
 
+    function openCurrentImage() {
+        if (!hasImages) {
+            return
+        }
+        const current = fileModel.get(currentIndex, "fileUrl")
+        if (current && current.toString().length > 0) {
+            const job = openImageJobComponent.createObject(root, {
+                jobUrl: current
+            })
+            if (job) {
+                job.start()
+            }
+        }
+    }
+
     function restartSlideshow() {
         slideshowTimer.running = slideshowActive && availableCount > 1
     }
@@ -190,6 +206,22 @@ PlasmoidItem {
             plasmoid.configuration.transitionMode = normalizedTransition
         }
         restartSlideshow()
+    }
+
+    Component {
+        id: openImageJobComponent
+
+        Kio.OpenUrlJob {
+            property url jobUrl: ""
+            url: jobUrl
+
+            onFinished: {
+                if (error) {
+                    console.warn("Αποτυχία ανοίγματος εικόνας:", jobUrl.toString(), errorString)
+                }
+                destroy()
+            }
+        }
     }
 
     FolderDialog {
@@ -364,6 +396,15 @@ PlasmoidItem {
                         sourceComponent: hasImages && root.transitionInfo
                             ? root.transitionInfo.component
                             : fadeComponent
+                    }
+
+                    MouseArea {
+                        anchors.fill: transitionLoader
+                        enabled: hasImages
+                        hoverEnabled: hasImages
+                        cursorShape: hasImages ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        acceptedButtons: Qt.LeftButton
+                        onClicked: root.openCurrentImage()
                     }
 
                     Controls.ToolButton {
