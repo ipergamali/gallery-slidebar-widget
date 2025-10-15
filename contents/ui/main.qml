@@ -1,5 +1,11 @@
-import QtQuick 6.0
-import QtQuick.Controls 6.0
+import QtQuick 6.5
+import QtQuick.Controls 6.5 as Controls
+// Σημείωση: Στο Qt 6 / Plasma 6 οι τύποι των QtQuick.Controls απαιτούν ρητή
+// δήλωση import. Εδώ χρησιμοποιούμε alias "Controls" ώστε να προσπελάζουμε
+// τα στοιχεία ως Controls.Menu, Controls.MenuItem κ.ο.κ. Εναλλακτικά, μπορεί
+// να γραφτεί `import QtQuick.Controls` χωρίς alias και να χρησιμοποιηθούν οι
+// τύποι απευθείας (Menu, MenuItem).
+import QtQuick.Layouts 6.5
 import Qt.labs.folderlistmodel
 import QtQuick.Dialogs
 import org.kde.kirigami as Kirigami
