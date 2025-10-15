@@ -118,6 +118,7 @@ PlasmoidItem {
     property bool kioModuleChecked: false
     property bool kioModuleAvailable: false
     property var kioComponent: null
+    readonly property url kioHelperUrl: Qt.resolvedUrl("helpers/KioOpenUrlJob.qml")
 
     function ensureKioComponent() {
         if (kioModuleChecked) {
@@ -127,26 +128,31 @@ PlasmoidItem {
         kioModuleChecked = true
 
         try {
-            const component = Qt.createComponent(
-                "import QtQml\nimport org.kde.kio as KIO\nKIO.OpenUrlJob {}",
-                Component.PreferSynchronous
-            )
+            const component = Qt.createComponent(kioHelperUrl, Component.PreferSynchronous)
 
-            if (component.status === Component.Error) {
-                console.warn("Το module org.kde.kio δεν είναι διαθέσιμο:", component.errorString())
-                kioModuleAvailable = false
-                return false
-            } else if (component.status !== Component.Ready) {
-                console.warn("Το module org.kde.kio δεν φορτώθηκε συγχρονισμένα (κατάσταση:", component.status, ")")
-                kioModuleAvailable = false
-                return false
+            if (component.status === Component.Ready) {
+                kioComponent = component
+                kioModuleAvailable = true
+                return true
             }
 
-            kioComponent = component
-            kioModuleAvailable = true
-            return true
+            if (component.status === Component.Error) {
+                const message = component.errorString ? component.errorString() : ""
+                console.warn("Το module org.kde.kio δεν είναι διαθέσιμο ή δεν φορτώθηκε σωστά. Βεβαιωθείτε ότι έχει εγκατασταθεί το πακέτο qml6-module-org-kde-kio.", message)
+            } else {
+                console.warn("Το module org.kde.kio δεν φορτώθηκε συγχρονισμένα (κατάσταση:", component.status, ")")
+            }
+
+            if (component.destroy) {
+                component.destroy()
+            }
+
+            kioComponent = null
+            kioModuleAvailable = false
+            return false
         } catch (error) {
             console.warn("Σφάλμα κατά τον έλεγχο του module org.kde.kio:", error)
+            kioComponent = null
             kioModuleAvailable = false
             return false
         }

@@ -27,3 +27,5 @@ Developed with **QML** and **Kirigami**, this widget brings a clean and modern p
 If you cloned or downloaded the source:
 ```bash
 kpackagetool6 --type Plasma/Applet --install ~/path/to/gallery-slidebar-widget
+```
+> ℹ️ **Εξάρτηση KIO QML:** Για να ανοίγουν τα αρχεία εικόνας στον προεπιλεγμένο προβολέα εκτός του plasmoid, βεβαιώσου ότι στο σύστημα Plasma 6 είναι εγκατεστημένο το πακέτο `qml6-module-org-kde-kio`.
