@@ -1,5 +1,5 @@
 import QtQuick 6.5
-import QtQuick.Controls as Controls
+import QtQuick.Controls 6.5 as Controls
 // Σημείωση: Στο Qt 6 / Plasma 6 οι τύποι των QtQuick.Controls απαιτούν ρητή
 // δήλωση import. Εδώ χρησιμοποιούμε alias "Controls" ώστε να προσπελάζουμε
 // τα στοιχεία ως Controls.Menu, Controls.MenuItem κ.ο.κ. Εναλλακτικά, μπορεί

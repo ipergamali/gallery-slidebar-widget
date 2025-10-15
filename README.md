@@ -34,7 +34,7 @@ kpackagetool6 --type Plasma/Applet --install ~/path/to/gallery-slidebar-widget
 Στο Plasma 6 / Qt 6 τα στοιχεία των QtQuick Controls πρέπει να εισάγονται ρητά. Μπορείς είτε να χρησιμοποιήσεις alias:
 
 ```qml
-import QtQuick.Controls as Controls
+import QtQuick.Controls 6.5 as Controls
 
 Controls.Menu {
     Controls.MenuItem { text: qsTr("Άνοιγμα") }
@@ -45,7 +45,7 @@ Controls.Menu {
 ή να αποφύγεις το alias και να χρησιμοποιήσεις απευθείας τους τύπους:
 
 ```qml
-import QtQuick.Controls
+import QtQuick.Controls 6.5
 
 Menu {
     MenuItem { text: qsTr("Άνοιγμα") }
