@@ -3,6 +3,7 @@ import QtQuick.Controls 6.5 as Controls
 import QtQuick.Layouts 6.5
 import Qt.labs.folderlistmodel
 import Qt.labs.platform
+import org.kde.kio as KIO
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.plasmoid
 
