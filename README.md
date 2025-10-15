@@ -27,3 +27,28 @@ Developed with **QML** and **Kirigami**, this widget brings a clean and modern p
 If you cloned or downloaded the source:
 ```bash
 kpackagetool6 --type Plasma/Applet --install ~/path/to/gallery-slidebar-widget
+```
+> ℹ️ **Εξάρτηση KIO QML:** Για να ανοίγουν τα αρχεία εικόνας στον προεπιλεγμένο προβολέα εκτός του plasmoid, βεβαιώσου ότι στο σύστημα Plasma 6 είναι εγκατεστημένο το πακέτο `qml6-module-org-kde-kio`.
+
+### ℹ️ QtQuick Controls import
+Στο Plasma 6 / Qt 6 τα στοιχεία των QtQuick Controls πρέπει να εισάγονται ρητά. Μπορείς είτε να χρησιμοποιήσεις alias:
+
+```qml
+import QtQuick.Controls as Controls
+
+Controls.Menu {
+    Controls.MenuItem { text: qsTr("Άνοιγμα") }
+    Controls.MenuItem { text: qsTr("Αφαίρεση") }
+}
+```
+
+ή να αποφύγεις το alias και να χρησιμοποιήσεις απευθείας τους τύπους:
+
+```qml
+import QtQuick.Controls
+
+Menu {
+    MenuItem { text: qsTr("Άνοιγμα") }
+    MenuItem { text: qsTr("Αφαίρεση") }
+}
+```

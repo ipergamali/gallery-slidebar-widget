@@ -1,5 +1,10 @@
 import QtQuick 6.5
-import QtQuick.Controls 6.5 as Controls
+import QtQuick.Controls as Controls
+// Σημείωση: Στο Qt 6 / Plasma 6 οι τύποι των QtQuick.Controls απαιτούν ρητή
+// δήλωση import. Εδώ χρησιμοποιούμε alias "Controls" ώστε να προσπελάζουμε
+// τα στοιχεία ως Controls.Menu, Controls.MenuItem κ.ο.κ. Εναλλακτικά, μπορεί
+// να γραφτεί `import QtQuick.Controls` χωρίς alias και να χρησιμοποιηθούν οι
+// τύποι απευθείας (Menu, MenuItem).
 import QtQuick.Layouts 6.5
 import Qt.labs.folderlistmodel
 import Qt.labs.platform
@@ -114,13 +119,95 @@ PlasmoidItem {
         currentIndex = (currentIndex - 1 + availableCount) % availableCount
     }
 
+    property bool kioModuleChecked: false
+    property bool kioModuleAvailable: false
+    property var kioComponent: null
+    readonly property url kioHelperUrl: Qt.resolvedUrl("helpers/KioOpenUrlJob.qml")
+
+    function ensureKioComponent() {
+        if (kioModuleChecked) {
+            return kioModuleAvailable
+        }
+
+        kioModuleChecked = true
+
+        try {
+            const component = Qt.createComponent(kioHelperUrl, Component.PreferSynchronous)
+
+            if (component.status === Component.Ready) {
+                kioComponent = component
+                kioModuleAvailable = true
+                return true
+            }
+
+            if (component.status === Component.Error) {
+                const message = component.errorString ? component.errorString() : ""
+                console.warn("Το module org.kde.kio δεν είναι διαθέσιμο ή δεν φορτώθηκε σωστά. Βεβαιωθείτε ότι έχει εγκατασταθεί το πακέτο qml6-module-org-kde-kio.", message)
+            } else {
+                console.warn("Το module org.kde.kio δεν φορτώθηκε συγχρονισμένα (κατάσταση:", component.status, ")")
+            }
+
+            if (component.destroy) {
+                component.destroy()
+            }
+
+            kioComponent = null
+            kioModuleAvailable = false
+            return false
+        } catch (error) {
+            console.warn("Σφάλμα κατά τον έλεγχο του module org.kde.kio:", error)
+            kioComponent = null
+            kioModuleAvailable = false
+            return false
+        }
+    }
+
+    function startKioJob(url) {
+        if (!kioComponent) {
+            return false
+        }
+
+        const job = kioComponent.createObject(root, {
+            url: url
+        })
+
+        if (!job) {
+            console.warn("Αδυναμία δημιουργίας KIO.OpenUrlJob για", url)
+            return false
+        }
+
+        job.finished.connect(function() {
+            if (job.error) {
+                console.warn("Αποτυχία ανοίγματος εικόνας με KIO:", job.errorText)
+            }
+            job.destroy()
+        })
+
+        job.start()
+        return true
+    }
+
     function openCurrentImage() {
         if (!hasImages) {
             return
         }
+
         const current = fileModel.get(currentIndex, "fileUrl")
-        if (current && current.toString().length > 0) {
-            Qt.openUrlExternally(current)
+        if (!current || current.toString().length === 0) {
+            return
+        }
+
+        let opened = false
+
+        if (ensureKioComponent()) {
+            opened = startKioJob(current)
+        }
+
+        if (!opened) {
+            const fallbackOk = Qt.openUrlExternally(current)
+            if (!fallbackOk) {
+                console.warn("Αποτυχία ανοίγματος εικόνας με Qt.openUrlExternally για", current)
+            }
         }
     }
 
