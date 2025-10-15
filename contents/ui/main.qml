@@ -7,13 +7,12 @@ import QtQuick.Controls 6.5 as Controls
 // τύποι απευθείας (Menu, MenuItem).
 import QtQuick.Layouts 6.5
 import Qt.labs.folderlistmodel
-import Qt.labs.platform
+import QtQuick.Dialogs
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.plasmoid
 
 PlasmoidItem {
     id: root
-
     // -- Ρυθμίσεις φακέλου -----------------------------------------------------
     readonly property url defaultFolder: {
         const picturesPath = StandardPaths.writableLocation(StandardPaths.PicturesLocation)
