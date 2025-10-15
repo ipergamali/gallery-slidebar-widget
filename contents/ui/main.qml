@@ -3,6 +3,7 @@ import QtQuick.Controls 6.5 as Controls
 import QtQuick.Layouts 6.5
 import Qt.labs.folderlistmodel
 import Qt.labs.platform
+import org.kde.kio as KIO
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.plasmoid
 
@@ -118,9 +119,34 @@ PlasmoidItem {
         if (!hasImages) {
             return
         }
+
         const current = fileModel.get(currentIndex, "fileUrl")
-        if (current && current.toString().length > 0) {
-            Qt.openUrlExternally(current)
+        if (!current || current.toString().length === 0) {
+            return
+        }
+
+        const job = openImageJobComponent.createObject(root, {
+            url: current
+        })
+
+        if (!job) {
+            console.warn("Αδυναμία δημιουργίας KIO.OpenUrlJob για", current)
+            return
+        }
+
+        job.start()
+    }
+
+    Component {
+        id: openImageJobComponent
+
+        KIO.OpenUrlJob {
+            onFinished: {
+                if (error) {
+                    console.warn("Αποτυχία ανοίγματος εικόνας:", errorText)
+                }
+                destroy()
+            }
         }
     }
 
