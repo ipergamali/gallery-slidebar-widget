@@ -3,6 +3,7 @@ import QtQuick.Controls 6.5 as Controls
 import QtQuick.Layouts 6.5
 import Qt.labs.folderlistmodel
 import Qt.labs.platform
+import org.kde.kio as Kio
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.plasmoid
 
@@ -120,7 +121,12 @@ PlasmoidItem {
         }
         const current = fileModel.get(currentIndex, "fileUrl")
         if (current && current.toString().length > 0) {
-            Qt.openUrlExternally(current)
+            const job = openImageJobComponent.createObject(root, {
+                jobUrl: current
+            })
+            if (job) {
+                job.start()
+            }
         }
     }
 
@@ -200,6 +206,22 @@ PlasmoidItem {
             plasmoid.configuration.transitionMode = normalizedTransition
         }
         restartSlideshow()
+    }
+
+    Component {
+        id: openImageJobComponent
+
+        Kio.OpenUrlJob {
+            property url jobUrl: ""
+            url: jobUrl
+
+            onFinished: {
+                if (error) {
+                    console.warn("Αποτυχία ανοίγματος εικόνας:", jobUrl.toString(), errorString)
+                }
+                destroy()
+            }
+        }
     }
 
     FolderDialog {
